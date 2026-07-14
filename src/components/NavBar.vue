@@ -200,30 +200,19 @@ nav{
 
 }
 
-.router-link-active{
-
+.nav-item.router-link-exact-active{
     color:#A47551;
-
 }
 
-.router-link-active::after{
-
+.nav-item.router-link-exact-active::after{
     content:"";
-
     position:absolute;
-
     left:0;
-
     bottom:-6px;
-
     width:100%;
-
     height:2px;
-
     background:#A47551;
-
     border-radius:10px;
-
 }
 
 /* ---------------------- */
