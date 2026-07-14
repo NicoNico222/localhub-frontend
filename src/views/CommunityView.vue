@@ -20,11 +20,17 @@
     <section class="search-card">
 
       <input
+        v-model="searchQuery"
         type="text"
-        placeholder="게시글 검색..."
+        placeholder="제목, 내용, 작성자로 검색..."
+        @keyup.enter="applySearch"
       />
 
-      <button>
+      <button v-if="searchQuery" class="clear-btn" @click="clearSearch">
+        ✕
+      </button>
+
+      <button @click="applySearch">
         검색
       </button>
 
@@ -94,6 +100,10 @@
 
         </div>
 
+      </div>
+
+      <div v-if="filteredPosts.length === 0" class="empty-row">
+        {{ activeSearch ? `"${activeSearch}"에 대한 검색 결과가 없습니다.` : '등록된 게시글이 없습니다.' }}
       </div>
 
     </section>
@@ -335,73 +345,46 @@
 <script setup>
 
 import { ref, reactive, computed } from 'vue'
+import {
+  posts,
+  categories,
+  writableCategories,
+  addPost,
+  updatePost,
+  removePost,
+  incrementViews,
+  verifyPassword
+} from '../stores/posts'
 
-const categories = [
+// ---------------------------------
+// 검색
+// ---------------------------------
 
-  '전체',
-  '관광지',
-  '문화시설',
-  '축제',
-  '여행코스',
-  '레포츠',
-  '숙박',
-  '쇼핑',
-  '음식점'
+const searchQuery = ref('')
+const activeSearch = ref('')
 
-]
+const filteredPosts = computed(() => {
+  const q = activeSearch.value.trim().toLowerCase()
 
-// 글쓰기 모달에서 선택 가능한 카테고리 (전체 제외 8개)
-const writableCategories = categories.filter(c => c !== '전체')
+  if (!q) return posts
 
-const posts = ref([
+  return posts.filter(post =>
+    post.title.toLowerCase().includes(q) ||
+    post.content.toLowerCase().includes(q) ||
+    post.author.toLowerCase().includes(q)
+  )
+})
 
-  {
-    id:1,
-    category:'관광지',
-    title:'금오산 야경 정말 예쁘네요.',
-    content:'어제 저녁에 금오산 케이블카 타고 올라가서 야경을 봤는데 정말 예뻤습니다. 다음에 또 가고 싶네요.',
-    author:'홍길동',
-    password:'1234',
-    views:128,
-    date:'2026-07-14'
-  },
+function applySearch() {
+  activeSearch.value = searchQuery.value
+  currentPage.value = 1
+}
 
-  {
-    id:2,
-    category:'음식점',
-    title:'구미역 근처 맛집 추천해주세요.',
-    content:'구미역 근처에서 저녁 식사할만한 맛집 아시는 분 계신가요? 추천 부탁드립니다.',
-    author:'김철수',
-    password:'1234',
-    views:77,
-    date:'2026-07-14'
-  },
-
-  {
-    id:3,
-    category:'축제',
-    title:'이번 주말 축제 일정 공유',
-    content:'이번 주말 구미에서 열리는 축제 일정 정리해봤습니다. 다들 좋은 시간 보내세요!',
-    author:'이영희',
-    password:'1234',
-    views:59,
-    date:'2026-07-13'
-  },
-
-  {
-    id:4,
-    category:'쇼핑',
-    title:'구미 대형마트 할인 행사',
-    content:'이번 주 대형마트에서 할인 행사 크게 하네요. 필요하신 분들은 참고하세요.',
-    author:'박민수',
-    password:'1234',
-    views:34,
-    date:'2026-07-12'
-  }
-
-])
-
-let nextId = 5
+function clearSearch() {
+  searchQuery.value = ''
+  activeSearch.value = ''
+  currentPage.value = 1
+}
 
 // ---------------------------------
 // 페이지네이션 (10개씩)
@@ -411,12 +394,12 @@ const postsPerPage = 10
 const currentPage = ref(1)
 
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(posts.value.length / postsPerPage))
+  Math.max(1, Math.ceil(filteredPosts.value.length / postsPerPage))
 )
 
 const paginatedPosts = computed(() => {
   const start = (currentPage.value - 1) * postsPerPage
-  return posts.value.slice(start, start + postsPerPage)
+  return filteredPosts.value.slice(start, start + postsPerPage)
 })
 
 function goToPage(page) {
@@ -453,14 +436,6 @@ function closeWriteModal() {
   showWriteModal.value = false
 }
 
-function todayString() {
-  const d = new Date()
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
-
 function submitWrite() {
 
   if (!writeForm.category) {
@@ -473,18 +448,16 @@ function submitWrite() {
     return
   }
 
-  // TODO: FastAPI POST /api/posts 연동 후 서버 저장으로 교체
-  posts.value.unshift({
-    id: nextId++,
+  addPost({
     category: writeForm.category,
     title: writeForm.title.trim(),
     content: writeForm.content.trim(),
     author: writeForm.author.trim(),
-    password: writeForm.password,
-    views: 0,
-    date: todayString()
+    password: writeForm.password
   })
 
+  searchQuery.value = ''
+  activeSearch.value = ''
   currentPage.value = 1
   closeWriteModal()
 }
@@ -510,8 +483,7 @@ const passwordError = ref('')
 
 function openDetailModal(post) {
   selectedPost.value = post
-  // TODO: FastAPI GET /api/posts/{id} 연동 후 조회수 증가는 서버에서 처리
-  post.views++
+  incrementViews(post.id)
   editMode.value = false
   passwordStage.value = null
   passwordInput.value = ''
@@ -540,8 +512,7 @@ function cancelPasswordCheck() {
 
 function confirmPassword() {
 
-  // TODO: FastAPI POST /api/posts/{id}/verify 연동 후 서버 검증으로 교체
-  if (passwordInput.value !== selectedPost.value.password) {
+  if (!verifyPassword(selectedPost.value.id, passwordInput.value)) {
     passwordError.value = '비밀번호가 일치하지 않습니다.'
     return
   }
@@ -554,7 +525,7 @@ function confirmPassword() {
     editMode.value = true
     passwordStage.value = null
   } else if (passwordStage.value === 'delete') {
-    deletePost()
+    handleDelete()
   }
 }
 
@@ -569,20 +540,20 @@ function submitEdit() {
     return
   }
 
-  // TODO: FastAPI PUT /api/posts/{id} 연동 후 서버 저장으로 교체
-  selectedPost.value.category = editForm.category
-  selectedPost.value.title = editForm.title.trim()
-  selectedPost.value.content = editForm.content.trim()
-  selectedPost.value.author = editForm.author.trim()
+  updatePost(selectedPost.value.id, {
+    category: editForm.category,
+    title: editForm.title.trim(),
+    content: editForm.content.trim(),
+    author: editForm.author.trim()
+  })
 
   writeError.value = ''
   editMode.value = false
 }
 
-function deletePost() {
+function handleDelete() {
 
-  // TODO: FastAPI DELETE /api/posts/{id} 연동 후 서버 삭제로 교체
-  posts.value = posts.value.filter(p => p.id !== selectedPost.value.id)
+  removePost(selectedPost.value.id)
 
   if (currentPage.value > totalPages.value) {
     currentPage.value = totalPages.value
@@ -728,6 +699,34 @@ cursor:pointer;
 .search-card button:hover{
 
 background:#8F6242;
+
+}
+
+.clear-btn{
+
+background:#F3E9DC !important;
+
+color:#8A5A33 !important;
+
+padding:0 18px !important;
+
+}
+
+.clear-btn:hover{
+
+background:#EBDCC7 !important;
+
+}
+
+.empty-row{
+
+padding:40px 20px;
+
+text-align:center;
+
+color:#8A7A68;
+
+font-size:14px;
 
 }
 

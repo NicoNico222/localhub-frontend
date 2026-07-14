@@ -123,6 +123,9 @@
 
 <script setup>
 
+import { computed } from 'vue'
+import { getRecentPosts } from '../stores/posts'
+
 // 카테고리: 이름 + 아이콘 + 아이콘 배경색
 const categories = [
   { name: '관광지',       icon: '🗺️', bg: '#E7F3E7' },
@@ -135,32 +138,9 @@ const categories = [
   { name: '음식점',       icon: '🍽️', bg: '#FBEEE0' }
 ]
 
-const recentPosts = [
-  {
-    id: 1,
-    category: '관광지',
-    title: '금오산 다녀온 후기',
-    author: '김구미',
-    views: 125,
-    date: '2026-07-14'
-  },
-  {
-    id: 2,
-    category: '음식점',
-    title: '구미 맛집 추천합니다',
-    author: '홍길동',
-    views: 98,
-    date: '2026-07-14'
-  },
-  {
-    id: 3,
-    category: '축제',
-    title: '이번 주 축제 일정 공유',
-    author: '이영희',
-    views: 76,
-    date: '2026-07-13'
-  }
-]
+// 커뮤니티에 실제로 등록된 게시글 중 최신 3개
+// TODO: FastAPI 연동 후에도 그대로 사용 가능 (store 내부만 API 호출로 교체)
+const recentPosts = computed(() => getRecentPosts(3))
 
 </script>
 
