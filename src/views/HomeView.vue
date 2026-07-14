@@ -5,8 +5,8 @@
     <section class="hero-card">
 
       <h1>
-        구미 지역 정보 공유 커뮤니티
-        <span>LocalHub</span>
+        구미의 모든 지역정보를<br />
+        한 곳에서 <span class="hero-pin">📍</span>
       </h1>
 
       <p>
@@ -26,7 +26,7 @@
           class="secondary-btn"
           @click="$router.push('/community')"
         >
-          커뮤니티
+          커뮤니티 가기
         </button>
 
       </div>
@@ -44,10 +44,21 @@
 
         <button
           v-for="category in categories"
-          :key="category"
+          :key="category.name"
           class="category-btn"
         >
-          {{ category }}
+
+          <span
+            class="category-icon"
+            :style="{ background: category.bg }"
+          >
+            {{ category.icon }}
+          </span>
+
+          <span class="category-name">
+            {{ category.name }}
+          </span>
+
         </button>
 
       </div>
@@ -79,8 +90,10 @@
           class="table-row"
         >
 
-          <div class="category-tag">
-            {{ post.category }}
+          <div>
+            <span class="category-tag">
+              {{ post.category }}
+            </span>
           </div>
 
           <div class="title">
@@ -110,15 +123,16 @@
 
 <script setup>
 
+// 카테고리: 이름 + 아이콘 + 아이콘 배경색
 const categories = [
-  '관광지',
-  '문화시설',
-  '축제공연행사',
-  '여행코스',
-  '레포츠',
-  '숙박',
-  '쇼핑',
-  '음식점'
+  { name: '관광지',       icon: '🗺️', bg: '#E7F3E7' },
+  { name: '문화시설',     icon: '🏛️', bg: '#F0EAF7' },
+  { name: '축제공연행사', icon: '🎆', bg: '#FBEAEA' },
+  { name: '여행코스',     icon: '🧳', bg: '#EAF0F7' },
+  { name: '레포츠',       icon: '⚡', bg: '#EEEAF9' },
+  { name: '숙박',         icon: '🏠', bg: '#E7F4F1' },
+  { name: '쇼핑',         icon: '🛍️', bg: '#FBF3DE' },
+  { name: '음식점',       icon: '🍽️', bg: '#FBEEE0' }
 ]
 
 const recentPosts = [
@@ -161,50 +175,49 @@ const recentPosts = [
 /* Hero */
 
 .hero-card{
-  background:white;
-  border-radius:24px;
-  padding:70px 40px;
+  background:linear-gradient(135deg, #FBF5EC 0%, #FFFDFA 60%);
+  border:1px solid #EDE3D6;
+  border-radius:20px;
+  padding:60px 40px;
   text-align:center;
-  box-shadow:0 8px 24px rgba(0,0,0,.08);
+  box-shadow:0 6px 20px rgba(120, 90, 60, .06);
 }
 
 .hero-card h1{
-  font-size:42px;
+  font-size:38px;
   font-weight:700;
-  color:#333;
+  color:#4A3826;
   line-height:1.4;
 }
 
-.hero-card span{
-  display:block;
-  color:#5A8DEE;
-  margin-top:8px;
+.hero-pin{
+  font-size:30px;
 }
 
 .hero-card p{
-  margin-top:18px;
-  font-size:18px;
-  color:#777;
+  margin-top:16px;
+  font-size:16px;
+  color:#8A7A68;
 }
 
 .hero-buttons{
-  margin-top:32px;
+  margin-top:30px;
   display:flex;
   justify-content:center;
-  gap:16px;
+  gap:14px;
 }
 
 .primary-btn,
 .secondary-btn{
 
   border:none;
-  border-radius:14px;
+  border-radius:12px;
 
-  padding:14px 28px;
+  padding:13px 26px;
 
   cursor:pointer;
 
-  font-size:16px;
+  font-size:15px;
   font-weight:600;
 
   transition:.3s;
@@ -212,23 +225,26 @@ const recentPosts = [
 
 .primary-btn{
 
-  background:#5A8DEE;
+  background:#A47551;
   color:white;
 }
 
 .primary-btn:hover{
 
+  background:#8F6242;
   transform:translateY(-2px);
 }
 
 .secondary-btn{
 
-  background:#e8f1ff;
-  color:#4c6fdc;
+  background:white;
+  color:#8A6A4B;
+  border:1px solid #E3D5C3;
 }
 
 .secondary-btn:hover{
 
+  background:#FAF4EB;
   transform:translateY(-2px);
 }
 
@@ -237,13 +253,15 @@ const recentPosts = [
 .category-section,
 .post-section{
 
-  background:white;
+  background:#FFFDFA;
 
-  border-radius:24px;
+  border:1px solid #EDE3D6;
+
+  border-radius:20px;
 
   padding:30px;
 
-  box-shadow:0 8px 24px rgba(0,0,0,.08);
+  box-shadow:0 6px 20px rgba(120, 90, 60, .06);
 }
 
 .section-header{
@@ -254,44 +272,80 @@ const recentPosts = [
 
   margin-bottom:22px;
 
-  color:#333;
+  color:#4A3826;
 }
+
+/* 1줄 8칸 */
 
 .category-grid{
 
   display:grid;
 
-  grid-template-columns:repeat(4,1fr);
+  grid-template-columns:repeat(8, 1fr);
 
-  gap:14px;
+  gap:12px;
 }
 
 .category-btn{
 
-  border:none;
+  display:flex;
 
-  background:#eef5ff;
+  flex-direction:column;
 
-  color:#4c6fdc;
+  align-items:center;
 
-  border-radius:14px;
+  gap:10px;
 
-  padding:16px;
+  border:1px solid #EDE3D6;
+
+  background:white;
+
+  border-radius:16px;
+
+  padding:18px 8px;
 
   cursor:pointer;
-
-  font-size:15px;
-
-  font-weight:600;
 
   transition:.25s;
 }
 
 .category-btn:hover{
 
-  background:#d9e8ff;
+  border-color:#D9C4A9;
 
-  transform:translateY(-2px);
+  box-shadow:0 6px 16px rgba(120, 90, 60, .12);
+
+  transform:translateY(-3px);
+}
+
+/* 아이콘 타일 */
+
+.category-icon{
+
+  width:44px;
+
+  height:44px;
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  border-radius:12px;
+
+  font-size:20px;
+}
+
+.category-name{
+
+  font-size:13px;
+
+  font-weight:600;
+
+  color:#5C4632;
+
+  white-space:nowrap;
 }
 
 /* Posts */
@@ -317,16 +371,20 @@ const recentPosts = [
 
   padding:16px;
 
-  border-bottom:1px solid #eee;
+  border-bottom:1px solid #F0E8DC;
 }
 
 .table-header{
 
   font-weight:700;
 
-  background:#f7faff;
+  color:#5C4632;
+
+  background:#FAF4EB;
 
   border-radius:12px;
+
+  border-bottom:none;
 }
 
 .table-row{
@@ -336,12 +394,22 @@ const recentPosts = [
 
 .table-row:hover{
 
-  background:#fafcff;
+  background:#FCF8F2;
 }
 
 .category-tag{
 
-  color:#4c6fdc;
+  display:inline-block;
+
+  background:#F3E9DC;
+
+  color:#8A5A33;
+
+  padding:4px 12px;
+
+  border-radius:999px;
+
+  font-size:13px;
 
   font-weight:600;
 }
@@ -349,6 +417,8 @@ const recentPosts = [
 .title{
 
   font-weight:500;
+
+  color:#4A3826;
 }
 
 /* Responsive */
@@ -356,11 +426,12 @@ const recentPosts = [
 @media (max-width:900px){
 
   .hero-card h1{
-    font-size:30px;
+    font-size:28px;
   }
 
+  /* 화면이 좁아지면 4칸 x 2줄 */
   .category-grid{
-    grid-template-columns:repeat(2,1fr);
+    grid-template-columns:repeat(4,1fr);
   }
 
   .table-header,

@@ -1,0 +1,628 @@
+<template>
+  <div class="chatbot-widget">
+
+    <!-- 펼쳐진 대화창 -->
+    <transition name="pop">
+
+      <div
+        v-if="isOpen"
+        class="chat-panel"
+      >
+
+        <!-- 헤더 -->
+        <div class="chat-header">
+
+          <div class="chat-header-left">
+
+            <span class="bot-avatar">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 3 L14.5 9 L21 9.8 L16.2 14.3 L17.5 21 L12 17.6 L6.5 21 L7.8 14.3 L3 9.8 L9.5 9 Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+
+            <div class="chat-header-text">
+              <strong>LocalHub 도우미</strong>
+              <span>구미 지역 정보 안내</span>
+            </div>
+
+          </div>
+
+          <button
+            class="close-btn"
+            @click="isOpen = false"
+          >
+            ✕
+          </button>
+
+        </div>
+
+        <!-- 대화 내용 -->
+        <div class="chat-body">
+
+          <div
+            v-for="(msg, i) in messages"
+            :key="i"
+            class="msg-row"
+            :class="msg.from"
+          >
+
+            <span
+              v-if="msg.from === 'bot'"
+              class="msg-avatar"
+            >
+              🍂
+            </span>
+
+            <div class="msg-bubble">
+              {{ msg.text }}
+            </div>
+
+          </div>
+
+          <!-- 예시 질문 칩 -->
+          <div class="suggestion-row">
+
+            <button
+              v-for="tip in suggestions"
+              :key="tip"
+              class="suggestion-chip"
+              @click="sendSuggestion(tip)"
+            >
+              {{ tip }}
+            </button>
+
+          </div>
+
+        </div>
+
+        <!-- 입력창 -->
+        <div class="chat-input">
+
+          <input
+            v-model="draft"
+            type="text"
+            placeholder="궁금한 점을 물어보세요"
+            @keyup.enter="sendMessage"
+          />
+
+          <button
+            class="send-btn"
+            @click="sendMessage"
+          >
+            전송
+          </button>
+
+        </div>
+
+      </div>
+
+    </transition>
+
+    <!-- 플로팅 버튼 -->
+    <button
+      class="fab-btn"
+      :class="{ 'is-open': isOpen }"
+      @click="isOpen = !isOpen"
+    >
+
+      <svg
+        v-if="!isOpen"
+        viewBox="0 0 24 24"
+        fill="none"
+      >
+        <path
+          d="M12 21c-.9 0-1.7-.2-2.5-.5L5 21l1.2-3.8A7.9 7.9 0 0 1 4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 9-8 9Z"
+          fill="currentColor"
+        />
+        <circle cx="9" cy="12" r="1" fill="#FFFDFA" />
+        <circle cx="12" cy="12" r="1" fill="#FFFDFA" />
+        <circle cx="15" cy="12" r="1" fill="#FFFDFA" />
+      </svg>
+
+      <svg
+        v-else
+        viewBox="0 0 24 24"
+        fill="none"
+      >
+        <path
+          d="M6 6L18 18M18 6L6 18"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+        />
+      </svg>
+
+    </button>
+
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+
+const isOpen = ref(false)
+const draft = ref('')
+
+// 초기 안내 메시지 (실제 서비스 문구는 추후 교체)
+const messages = ref([
+  { from: 'bot', text: '예시' }
+])
+
+const suggestions = [
+  '금오산 관광 코스',
+  '구미 맛집 추천',
+  '이번 주 축제 일정'
+]
+
+function sendMessage() {
+  const text = draft.value.trim()
+  if (!text) return
+
+  messages.value.push({ from: 'user', text })
+  draft.value = ''
+
+  // TODO: FastAPI POST /api/chat 연동 후 실제 응답으로 교체
+  messages.value.push({ from: 'bot', text: '예시' })
+}
+
+function sendSuggestion(tip) {
+  messages.value.push({ from: 'user', text: tip })
+
+  // TODO: FastAPI POST /api/chat 연동 후 실제 응답으로 교체
+  messages.value.push({ from: 'bot', text: '예시' })
+}
+</script>
+
+<style scoped>
+
+.chatbot-widget{
+
+    position:fixed;
+
+    right:28px;
+
+    bottom:28px;
+
+    z-index:200;
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:flex-end;
+
+    gap:16px;
+
+}
+
+/* ---------------------- */
+/* 플로팅 버튼 */
+/* ---------------------- */
+
+.fab-btn{
+
+    width:58px;
+
+    height:58px;
+
+    border:none;
+
+    border-radius:20px;
+
+    background:linear-gradient(135deg, #A47551, #8A5A33);
+
+    color:white;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    box-shadow:0 10px 24px rgba(120, 90, 60, .35);
+
+    cursor:pointer;
+
+    transition:.25s;
+
+}
+
+.fab-btn svg{
+
+    width:26px;
+
+    height:26px;
+
+}
+
+.fab-btn:hover{
+
+    transform:translateY(-3px);
+
+    box-shadow:0 14px 28px rgba(120, 90, 60, .4);
+
+}
+
+.fab-btn.is-open{
+
+    background:#8A7A68;
+
+}
+
+/* ---------------------- */
+/* 대화창 */
+/* ---------------------- */
+
+.chat-panel{
+
+    width:340px;
+
+    max-width:calc(100vw - 40px);
+
+    height:600px;
+
+    max-height:calc(100vh - 100px);
+
+    background:#FFFDFA;
+
+    border:1px solid #EDE3D6;
+
+    border-radius:22px;
+
+    box-shadow:0 16px 40px rgba(120, 90, 60, .2);
+
+    display:flex;
+
+    flex-direction:column;
+
+    overflow:hidden;
+
+}
+
+/* 헤더 */
+
+.chat-header{
+
+    background:linear-gradient(135deg, #A47551, #8A5A33);
+
+    color:white;
+
+    padding:16px 18px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+}
+
+.chat-header-left{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+}
+
+.bot-avatar{
+
+    width:32px;
+
+    height:32px;
+
+    border-radius:10px;
+
+    background:rgba(255,255,255,.18);
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+}
+
+.bot-avatar svg{
+
+    width:16px;
+
+    height:16px;
+
+    color:#FFE9C7;
+
+}
+
+.chat-header-text{
+
+    display:flex;
+
+    flex-direction:column;
+
+    line-height:1.3;
+
+}
+
+.chat-header-text strong{
+
+    font-size:14px;
+
+}
+
+.chat-header-text span{
+
+    font-size:11px;
+
+    opacity:.85;
+
+}
+
+.close-btn{
+
+    background:none;
+
+    border:none;
+
+    color:white;
+
+    font-size:15px;
+
+    cursor:pointer;
+
+    opacity:.85;
+
+}
+
+.close-btn:hover{
+
+    opacity:1;
+
+}
+
+/* 대화 내용 */
+
+.chat-body{
+
+    flex:1;
+
+    padding:18px;
+
+    overflow-y:auto;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:12px;
+
+    background:#FAF6F0;
+
+}
+
+.msg-row{
+
+    display:flex;
+
+    align-items:flex-end;
+
+    gap:8px;
+
+}
+
+.msg-row.user{
+
+    justify-content:flex-end;
+
+}
+
+.msg-avatar{
+
+    width:26px;
+
+    height:26px;
+
+    border-radius:50%;
+
+    background:#F3E9DC;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    font-size:13px;
+
+    flex-shrink:0;
+
+}
+
+.msg-bubble{
+
+    max-width:75%;
+
+    padding:11px 14px;
+
+    border-radius:16px;
+
+    font-size:13.5px;
+
+    line-height:1.5;
+
+}
+
+.msg-row.bot .msg-bubble{
+
+    background:white;
+
+    border:1px solid #EDE3D6;
+
+    color:#4A3826;
+
+    border-bottom-left-radius:4px;
+}
+
+.msg-row.user .msg-bubble{
+
+    background:#A47551;
+
+    color:white;
+
+    border-bottom-right-radius:4px;
+}
+
+/* 추천 칩 */
+
+.suggestion-row{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    gap:8px;
+
+    padding-left:34px;
+
+}
+
+.suggestion-chip{
+
+    border:1px solid #E3D5C3;
+
+    background:#FFFDFA;
+
+    color:#8A5A33;
+
+    padding:7px 12px;
+
+    border-radius:30px;
+
+    font-size:12px;
+
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:.2s;
+}
+
+.suggestion-chip:hover{
+
+    background:#F3E9DC;
+}
+
+/* 입력창 */
+
+.chat-input{
+
+    display:flex;
+
+    gap:8px;
+
+    padding:14px;
+
+    border-top:1px solid #EDE3D6;
+
+    background:#FFFDFA;
+
+}
+
+.chat-input input{
+
+    flex:1;
+
+    padding:10px 14px;
+
+    border:none;
+
+    background:#FAF4EB;
+
+    border-radius:30px;
+
+    font-size:13px;
+
+    outline:none;
+
+}
+
+.send-btn{
+
+    background:#A47551;
+
+    color:white;
+
+    border:none;
+
+    padding:0 18px;
+
+    border-radius:30px;
+
+    font-size:13px;
+
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:.2s;
+}
+
+.send-btn:hover{
+
+    background:#8A5A33;
+}
+
+/* 트랜지션 */
+
+.pop-enter-active,
+.pop-leave-active{
+
+    transition:.2s ease;
+}
+
+.pop-enter-from,
+.pop-leave-to{
+
+    opacity:0;
+
+    transform:translateY(12px) scale(.96);
+}
+
+/* ---------------------- */
+/* Mobile: 전체 화면 */
+/* ---------------------- */
+
+@media (max-width:600px){
+
+.chatbot-widget{
+
+    right:16px;
+
+    bottom:16px;
+
+}
+
+.chat-panel{
+
+    position:fixed;
+
+    inset:0;
+
+    width:100%;
+
+    max-width:100%;
+
+    height:100%;
+
+    max-height:100%;
+
+    border-radius:0;
+}
+
+}
+
+</style>

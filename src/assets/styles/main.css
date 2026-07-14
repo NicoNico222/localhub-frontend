@@ -1,5 +1,6 @@
 /* ===========================
    LocalHub Design System
+   (Autumn Brown Theme)
    =========================== */
 
 /* Google Font */
@@ -9,20 +10,22 @@
 
 :root {
 
-  --primary: #5A8DEE;
-  --primary-light: #EAF3FF;
-  --primary-dark: #4679D7;
+  /* 메인 브라운 (라떼/카멜 톤) */
+  --primary: #A47551;
+  --primary-light: #F3E9DC;
+  --primary-dark: #8F6242;
 
-  --background: #F7FAFF;
-  --surface: #FFFFFF;
+  /* 배경: 아주 연한 크림 */
+  --background: #FAF6F0;
+  --surface: #FFFDFA;
 
-  --text: #333333;
-  --text-light: #666666;
+  --text: #4A3826;
+  --text-light: #8A7A68;
 
-  --border: #E6ECF5;
+  --border: #EDE3D6;
 
   --shadow:
-      0 8px 24px rgba(0,0,0,.08);
+      0 6px 20px rgba(120, 90, 60, .06);
 
   --radius:20px;
 
@@ -65,7 +68,7 @@ body{
 
     width:100%;
 
-    max-width:1280px;
+    max-width:1100px;
 
     margin:auto;
 
@@ -136,7 +139,9 @@ textarea{
 
 .card{
 
-    background:white;
+    background:var(--surface);
+
+    border:1px solid var(--border);
 
     border-radius:var(--radius);
 
@@ -186,7 +191,7 @@ textarea{
 
     background:var(--primary-light);
 
-    color:var(--primary);
+    color:var(--primary-dark);
 
     padding:14px 28px;
 
@@ -208,7 +213,7 @@ textarea{
 
     background:var(--primary-light);
 
-    color:var(--primary);
+    color:var(--primary-dark);
 
     font-size:14px;
 
@@ -228,7 +233,7 @@ table{
 
 th{
 
-    background:#F5F8FD;
+    background:#FAF4EB;
 
     padding:16px;
 
@@ -280,13 +285,13 @@ transform:none;
 
 ::-webkit-scrollbar-track{
 
-    background:#EDF5FF;
+    background:#F5EDE2;
 
 }
 
 ::-webkit-scrollbar-thumb{
 
-    background:#BFD8FF;
+    background:#D9C4A9;
 
     border-radius:10px;
 
@@ -294,7 +299,7 @@ transform:none;
 
 ::-webkit-scrollbar-thumb:hover{
 
-    background:#9FC5FF;
+    background:#C7AC8B;
 
 }
 

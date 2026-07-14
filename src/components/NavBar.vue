@@ -54,7 +54,9 @@ import { RouterLink } from 'vue-router'
 
     width:100%;
 
-    height:75px;
+    max-width:1100px;
+
+    height:52px;
 
     display:flex;
 
@@ -62,17 +64,15 @@ import { RouterLink } from 'vue-router'
 
     align-items:center;
 
-    padding:0 45px;
+    padding:0 26px;
 
     background:white;
 
-    border-radius:18px;
+    border-radius:14px;
 
-    box-shadow:0 6px 20px rgba(0,0,0,.08);
+    box-shadow:0 6px 20px rgba(120, 90, 60, .08);
 
-    margin-top:18px;
-
-    margin-bottom:30px;
+    margin:14px auto 24px;
 
 }
 
@@ -86,37 +86,37 @@ import { RouterLink } from 'vue-router'
 
     align-items:center;
 
-    gap:14px;
+    gap:10px;
 
 }
 
 .logo{
 
-    font-size:30px;
+    font-size:19px;
 
     font-weight:700;
 
-    color:#5A8DEE;
+    color:#A47551;
 
 }
 
 .logo:hover{
 
-    color:#4677d8;
+    color:#8F6242;
 
 }
 
 .region-badge{
 
-    background:#dbeafe;
+    background:#F3E9DC;
 
-    color:#3563c8;
+    color:#8A5A33;
 
-    padding:8px 15px;
+    padding:5px 11px;
 
     border-radius:30px;
 
-    font-size:14px;
+    font-size:12px;
 
     font-weight:600;
 
@@ -138,21 +138,21 @@ import { RouterLink } from 'vue-router'
 
 .search-section input{
 
-    width:420px;
+    width:500px;
 
     max-width:100%;
 
-    padding:13px 18px;
+    padding:8px 14px;
 
     border:none;
 
     border-radius:30px;
 
-    background:#f3f7fd;
+    background:#FAF4EB;
 
     outline:none;
 
-    font-size:15px;
+    font-size:13px;
 
     transition:.3s;
 
@@ -162,7 +162,7 @@ import { RouterLink } from 'vue-router'
 
     background:white;
 
-    box-shadow:0 0 0 3px #c7ddff;
+    box-shadow:0 0 0 3px #EBDCC7;
 
 }
 
@@ -176,17 +176,17 @@ nav{
 
     align-items:center;
 
-    gap:30px;
+    gap:20px;
 
 }
 
 .nav-item{
 
-    font-size:17px;
+    font-size:14px;
 
     font-weight:600;
 
-    color:#666;
+    color:#8A7A68;
 
     transition:.25s;
 
@@ -196,13 +196,13 @@ nav{
 
 .nav-item:hover{
 
-    color:#5A8DEE;
+    color:#A47551;
 
 }
 
 .router-link-active{
 
-    color:#5A8DEE;
+    color:#A47551;
 
 }
 
@@ -214,13 +214,13 @@ nav{
 
     left:0;
 
-    bottom:-8px;
+    bottom:-6px;
 
     width:100%;
 
-    height:3px;
+    height:2px;
 
-    background:#5A8DEE;
+    background:#A47551;
 
     border-radius:10px;
 
@@ -238,9 +238,9 @@ nav{
 
     height:auto;
 
-    padding:20px;
+    padding:14px;
 
-    gap:18px;
+    gap:12px;
 
 }
 
@@ -258,7 +258,7 @@ nav{
 
 nav{
 
-    gap:22px;
+    gap:16px;
 
 }
 

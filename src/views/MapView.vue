@@ -121,19 +121,21 @@ const categories = [
 
 .page-header{
 
-    background:white;
+    background:#FFFDFA;
 
-    border-radius:24px;
+    border:1px solid #EDE3D6;
+
+    border-radius:20px;
 
     padding:40px;
 
-    box-shadow:0 8px 24px rgba(0,0,0,.08);
+    box-shadow:0 6px 20px rgba(120, 90, 60, .06);
 
 }
 
 .page-header h1{
 
-    color:#4b84f1;
+    color:#A47551;
 
     font-size:36px;
 
@@ -143,7 +145,7 @@ const categories = [
 
 .page-header p{
 
-    color:#666;
+    color:#8A7A68;
 
     font-size:17px;
 
@@ -153,9 +155,11 @@ const categories = [
 
 .category-card{
 
-    background:white;
+    background:#FFFDFA;
 
-    border-radius:24px;
+    border:1px solid #EDE3D6;
+
+    border-radius:20px;
 
     padding:24px;
 
@@ -165,7 +169,7 @@ const categories = [
 
     gap:15px;
 
-    box-shadow:0 8px 24px rgba(0,0,0,.08);
+    box-shadow:0 6px 20px rgba(120, 90, 60, .06);
 
 }
 
@@ -175,9 +179,9 @@ const categories = [
 
     border-radius:14px;
 
-    background:#edf5ff;
+    background:#F3E9DC;
 
-    color:#4b84f1;
+    color:#8A5A33;
 
     padding:15px;
 
@@ -193,7 +197,7 @@ const categories = [
 
 .category-btn:hover{
 
-    background:#dcecff;
+    background:#EBDCC7;
 
     transform:translateY(-2px);
 
@@ -203,13 +207,15 @@ const categories = [
 
 .map-card{
 
-    background:white;
+    background:#FFFDFA;
 
-    border-radius:24px;
+    border:1px solid #EDE3D6;
+
+    border-radius:20px;
 
     padding:25px;
 
-    box-shadow:0 8px 24px rgba(0,0,0,.08);
+    box-shadow:0 6px 20px rgba(120, 90, 60, .06);
 
 }
 
@@ -217,12 +223,12 @@ const categories = [
 
     height:520px;
 
-    border-radius:18px;
+    border-radius:16px;
 
     background:linear-gradient(
     135deg,
-    #eef6ff,
-    #dcecff
+    #F8F1E7,
+    #EFE1CD
     );
 
     display:flex;
@@ -245,7 +251,7 @@ const categories = [
 
     margin-top:20px;
 
-    color:#4b84f1;
+    color:#8A5A33;
 
 }
 
@@ -253,7 +259,7 @@ const categories = [
 
     margin-top:10px;
 
-    color:#666;
+    color:#8A7A68;
 
 }
 
@@ -261,13 +267,15 @@ const categories = [
 
 .info-card{
 
-    background:white;
+    background:#FFFDFA;
 
-    border-radius:24px;
+    border:1px solid #EDE3D6;
+
+    border-radius:20px;
 
     padding:30px;
 
-    box-shadow:0 8px 24px rgba(0,0,0,.08);
+    box-shadow:0 6px 20px rgba(120, 90, 60, .06);
 
 }
 
@@ -275,7 +283,7 @@ const categories = [
 
     margin-bottom:25px;
 
-    color:#333;
+    color:#4A3826;
 
 }
 
@@ -291,9 +299,9 @@ const categories = [
 
 .info-box{
 
-    background:#f8fbff;
+    background:#FAF4EB;
 
-    border-radius:18px;
+    border-radius:16px;
 
     padding:25px;
 
@@ -301,7 +309,7 @@ const categories = [
 
 .info-box h3{
 
-    color:#4b84f1;
+    color:#8A5A33;
 
     margin-bottom:15px;
 
@@ -309,7 +317,7 @@ const categories = [
 
 .info-box p{
 
-    color:#666;
+    color:#8A7A68;
 
     line-height:1.7;
 
