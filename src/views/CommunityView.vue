@@ -145,7 +145,8 @@
     <!-- 글쓰기 모달 -->
     <!-- ===================== -->
 
-    <div v-if="showWriteModal" class="modal-overlay" @click.self="closeWriteModal">
+    <!-- 바깥 영역 클릭으로는 닫히지 않음 (작성 중 내용 유실 방지) -->
+    <div v-if="showWriteModal" class="modal-overlay">
 
       <div class="modal-card">
 
@@ -229,7 +230,8 @@
     <!-- 게시글 상세 / 수정 모달 -->
     <!-- ===================== -->
 
-    <div v-if="showDetailModal" class="modal-overlay" @click.self="closeDetailModal">
+    <!-- 조회 모드에서는 바깥 클릭으로 닫히지만, 수정 중에는 닫히지 않음 -->
+    <div v-if="showDetailModal" class="modal-overlay" @click.self="onDetailOverlayClick">
 
       <div class="modal-card">
 
@@ -362,6 +364,7 @@
 <script setup>
 
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   categories,
   writableCategories,
@@ -371,6 +374,9 @@ import {
   updatePost,
   deletePost
 } from '../stores/posts'
+
+const route = useRoute()
+const router = useRouter()
 
 const PAGE_SIZE = 10
 
@@ -479,8 +485,16 @@ function selectCategory(category) {
   loadPage(1)
 }
 
-onMounted(() => {
-  loadPage(1)
+onMounted(async () => {
+  await loadPage(1)
+
+  // 홈 화면 최근 게시글 등에서 ?post=ID 로 진입한 경우 해당 게시글 상세를 자동으로 엽니다.
+  const postId = Number(route.query.post)
+  if (postId) {
+    openDetailModal({ id: postId })
+    // 새로고침/뒤로가기 시 모달이 다시 뜨지 않도록 쿼리 제거
+    router.replace({ path: '/community' })
+  }
 })
 
 // ---------------------------------
@@ -608,6 +622,12 @@ function closeDetailModal() {
 
   // 조회수가 바뀌었을 수 있으니 목록을 새로고침
   loadPage(currentPage.value)
+}
+
+// 상세 모달 바깥 클릭: 수정 중일 때는 닫지 않음 (작성 내용 유실 방지)
+function onDetailOverlayClick() {
+  if (editMode.value) return
+  closeDetailModal()
 }
 
 function startEdit() {
@@ -1091,11 +1111,11 @@ padding:20px;
 
 .modal-card{
 
-width:520px;
+width:680px;
 
 max-width:100%;
 
-max-height:88vh;
+max-height:92vh;
 
 background:#FFFDFA;
 
@@ -1239,7 +1259,7 @@ box-shadow:0 0 0 3px #EBDCC7;
 
 .modal-textarea{
 
-min-height:120px;
+min-height:180px;
 
 resize:vertical;
 

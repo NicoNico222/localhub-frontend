@@ -96,6 +96,7 @@
           v-for="post in recentPosts"
           :key="post.id"
           class="table-row"
+          @click="goToPost(post.id)"
         >
 
           <div>
@@ -132,7 +133,15 @@
 <script setup>
 
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { fetchPosts } from '../stores/posts'
+
+const router = useRouter()
+
+// 최근 게시글 클릭 시 커뮤니티 페이지로 이동 + 해당 게시글 상세 자동 오픈
+function goToPost(id) {
+  router.push({ path: '/community', query: { post: id } })
+}
 
 // 카테고리: 이름 + 아이콘 + 아이콘 배경색
 const categories = [
@@ -402,6 +411,8 @@ onMounted(async () => {
 .table-row{
 
   transition:.2s;
+
+  cursor:pointer;
 }
 
 .table-row:hover{
