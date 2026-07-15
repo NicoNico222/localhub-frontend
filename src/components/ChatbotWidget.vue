@@ -40,7 +40,7 @@
         </div>
 
         <!-- 대화 내용 -->
-        <div class="chat-body">
+        <div class="chat-body" ref="chatBody">
 
           <div
             v-for="(msg, i) in messages"
@@ -58,6 +58,17 @@
 
             <div class="msg-bubble">
               {{ msg.text }}
+            </div>
+
+          </div>
+
+          <!-- 응답 대기 표시 -->
+          <div v-if="isThinking" class="msg-row bot">
+
+            <span class="msg-avatar">🍂</span>
+
+            <div class="msg-bubble typing">
+              <span></span><span></span><span></span>
             </div>
 
           </div>
@@ -85,11 +96,13 @@
             v-model="draft"
             type="text"
             placeholder="궁금한 점을 물어보세요"
+            :disabled="isThinking"
             @keyup.enter="sendMessage"
           />
 
           <button
             class="send-btn"
+            :disabled="isThinking"
             @click="sendMessage"
           >
             전송
@@ -141,14 +154,16 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 
 const isOpen = ref(false)
 const draft = ref('')
+const isThinking = ref(false)
+const chatBody = ref(null)
 
-// 초기 안내 메시지 (실제 서비스 문구는 추후 교체)
+// 초기 안내 메시지
 const messages = ref([
-  { from: 'bot', text: '예시' }
+  { from: 'bot', text: 'LocalHub 도우미 챗봇입니다. 궁금한 것을 물어보세요.' }
 ])
 
 const suggestions = [
@@ -157,22 +172,119 @@ const suggestions = [
   '이번 주 축제 일정'
 ]
 
+// ---------------------------------
+// OpenAI API 연동 (프론트 직접 호출)
+// ---------------------------------
+// .env 에 VITE_OPENAI_API_KEY=sk-... 를 넣어주세요.
+// ⚠ 주의: 프론트에서 직접 호출하면 빌드 결과물에 API 키가 노출됩니다.
+//    데모/과제용으로만 쓰고, 실서비스라면 FastAPI에 /api/chat 을 만들어
+//    서버에서 OpenAI를 호출하는 방식으로 옮기는 것을 권장합니다.
+
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY
+
+const SYSTEM_PROMPT = `당신은 "LocalHub 도우미"입니다.
+경상북도 구미시와 경북권의 관광지, 문화시설, 축제·공연·행사, 여행코스, 레포츠, 숙박, 쇼핑, 음식점 정보를 안내하는 지역 정보 챗봇입니다.
+
+규칙:
+- 한국어로 친절하고 간결하게 답합니다. (답변은 3~5문장 이내를 기본으로)
+- 구미/경북 지역과 무관한 질문이면, 지역 정보 안내 챗봇임을 밝히고 정중히 안내를 돌려줍니다.
+- 확실하지 않은 정보(운영시간, 요금, 축제 날짜 등)는 단정하지 말고 공식 홈페이지나 전화 확인을 권합니다.`
+
+async function askOpenAI(userText) {
+  if (!OPENAI_API_KEY) {
+    return 'OpenAI API 키가 설정되지 않았습니다. .env의 VITE_OPENAI_API_KEY를 확인해주세요.'
+  }
+
+  // 최근 대화 10개까지를 문맥으로 전달 (초기 인사말 제외)
+  const history = messages.value
+    .slice(1)
+    .slice(-10)
+    .map(m => ({
+      role: m.from === 'user' ? 'user' : 'assistant',
+      content: m.text
+    }))
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...history,
+        { role: 'user', content: userText }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    })
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    console.error('OpenAI API error:', err)
+
+    if (res.status === 401) return 'API 키가 올바르지 않습니다. 키를 다시 확인해주세요.'
+
+    if (res.status === 429) {
+      const errorType = err?.error?.code || err?.error?.type
+
+      if (errorType === 'insufficient_quota') {
+        return 'OpenAI 계정에 결제 정보/크레딧이 등록되어 있지 않습니다. OpenAI 대시보드(platform.openai.com/settings/organization/billing)에서 결제 정보를 등록해주세요.'
+      }
+
+      return '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.'
+    }
+
+    return '답변을 가져오지 못했습니다. 잠시 후 다시 시도해주세요.'
+  }
+
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content?.trim() || '답변을 생성하지 못했습니다.'
+}
+
+// 대화창 맨 아래로 스크롤
+async function scrollToBottom() {
+  await nextTick()
+  if (chatBody.value) {
+    chatBody.value.scrollTop = chatBody.value.scrollHeight
+  }
+}
+
+async function ask(text) {
+  messages.value.push({ from: 'user', text })
+  scrollToBottom()
+
+  isThinking.value = true
+
+  try {
+    const answer = await askOpenAI(text)
+    messages.value.push({ from: 'bot', text: answer })
+  } catch (e) {
+    console.error(e)
+    messages.value.push({
+      from: 'bot',
+      text: '오류가 발생했습니다. 네트워크 상태를 확인하고 다시 시도해주세요.'
+    })
+  } finally {
+    isThinking.value = false
+    scrollToBottom()
+  }
+}
+
 function sendMessage() {
   const text = draft.value.trim()
-  if (!text) return
+  if (!text || isThinking.value) return
 
-  messages.value.push({ from: 'user', text })
   draft.value = ''
-
-  // TODO: FastAPI POST /api/chat 연동 후 실제 응답으로 교체
-  messages.value.push({ from: 'bot', text: '예시' })
+  ask(text)
 }
 
 function sendSuggestion(tip) {
-  messages.value.push({ from: 'user', text: tip })
-
-  // TODO: FastAPI POST /api/chat 연동 후 실제 응답으로 교체
-  messages.value.push({ from: 'bot', text: '예시' })
+  if (isThinking.value) return
+  ask(tip)
 }
 </script>
 
@@ -476,6 +588,49 @@ function sendSuggestion(tip) {
     border-bottom-right-radius:4px;
 }
 
+/* 응답 대기 점 3개 애니메이션 */
+
+.msg-bubble.typing{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:5px;
+
+    min-width:52px;
+}
+
+.msg-bubble.typing span{
+
+    width:7px;
+
+    height:7px;
+
+    border-radius:50%;
+
+    background:#C7AC8B;
+
+    animation:typing-bounce 1.2s infinite ease-in-out;
+}
+
+.msg-bubble.typing span:nth-child(2){
+
+    animation-delay:.15s;
+}
+
+.msg-bubble.typing span:nth-child(3){
+
+    animation-delay:.3s;
+}
+
+@keyframes typing-bounce{
+
+    0%, 60%, 100%{ transform:translateY(0); opacity:.5; }
+
+    30%{ transform:translateY(-4px); opacity:1; }
+}
+
 /* 추천 칩 */
 
 .suggestion-row{
@@ -574,6 +729,14 @@ function sendSuggestion(tip) {
 .send-btn:hover{
 
     background:#8A5A33;
+}
+
+.chat-input input:disabled,
+.send-btn:disabled{
+
+    opacity:.6;
+
+    cursor:not-allowed;
 }
 
 /* 트랜지션 */
