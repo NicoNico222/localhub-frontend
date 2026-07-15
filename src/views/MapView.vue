@@ -28,16 +28,20 @@
     <!-- 지도 -->
     <section class="map-card">
 
-      <div class="map-placeholder">
+      <!-- 지도가 그려질 영역 -->
+      <div v-show="!mapError" ref="mapContainer" class="map-area"></div>
+
+      <!-- 로드 실패 시 안내 -->
+      <div v-if="mapError" class="map-placeholder">
 
         <div class="icon">
           🗺️
         </div>
 
-        <h2>Kakao Map 영역</h2>
+        <h2>지도를 불러오지 못했습니다</h2>
 
         <p>
-          추후 Kakao Maps API가 연결됩니다.
+          {{ mapError }}
         </p>
 
       </div>
@@ -90,6 +94,9 @@
 
 <script setup>
 
+import { ref, onMounted } from 'vue'
+import { loadKakaoMap } from '../api/kakaoMap'
+
 const categories = [
 
   '관광지',
@@ -102,6 +109,49 @@ const categories = [
   '음식점'
 
 ]
+
+// ---------------------------------
+// Kakao Map
+// ---------------------------------
+
+const mapContainer = ref(null)
+const mapError = ref('')
+
+// 초기 중심: 경북 구미시 진평동 985-35
+const CENTER_ADDRESS = '경북 구미시 진평동 985-35'
+
+// 주소 변환 실패 시 대비용 근사 좌표 (구미 진평동 일대)
+const FALLBACK_CENTER = { lat: 36.1042, lng: 128.4184 }
+
+let map = null
+
+onMounted(async () => {
+  try {
+    const kakao = await loadKakaoMap()
+
+    // 1) 일단 fallback 좌표로 지도를 먼저 생성
+    map = new kakao.maps.Map(mapContainer.value, {
+      center: new kakao.maps.LatLng(FALLBACK_CENTER.lat, FALLBACK_CENTER.lng),
+      level: 6 // 숫자가 클수록 넓게 보임
+    })
+
+    // 줌 컨트롤 추가 (우측)
+    map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT)
+
+    // 2) 주소 -> 좌표 변환 후 정확한 위치로 중심 이동
+    const geocoder = new kakao.maps.services.Geocoder()
+
+    geocoder.addressSearch(CENTER_ADDRESS, (result, status) => {
+      if (status === kakao.maps.services.Status.OK && result.length > 0) {
+        map.setCenter(new kakao.maps.LatLng(result[0].y, result[0].x))
+      }
+      // 변환 실패 시에는 fallback 중심 그대로 유지
+    })
+  } catch (e) {
+    mapError.value = e.message
+    console.error(e)
+  }
+})
 
 </script>
 
@@ -218,6 +268,20 @@ const categories = [
     box-shadow:0 6px 20px rgba(120, 90, 60, .06);
 
 }
+
+.map-area{
+
+    width:100%;
+
+    height:520px;
+
+    border-radius:16px;
+
+    overflow:hidden;
+
+}
+
+/* SDK 로드 실패 시에만 표시되는 안내 박스 */
 
 .map-placeholder{
 
@@ -339,7 +403,8 @@ grid-template-columns:1fr;
 
 }
 
-.map-placeholder{
+.map-placeholder,
+.map-area{
 
 height:350px;
 
