@@ -46,6 +46,7 @@
           v-for="category in categories"
           :key="category.name"
           class="category-btn"
+          @click="goToMapCategory(category.key)"
         >
 
           <span
@@ -143,17 +144,22 @@ function goToPost(id) {
   router.push({ path: '/community', query: { post: id } })
 }
 
-// 카테고리: 이름 + 아이콘 + 아이콘 배경색
+// 카테고리: 이름 + 아이콘 + 아이콘 배경색 + 지도 페이지 카테고리 키
 const categories = [
-  { name: '관광지',       icon: '🗺️', bg: '#E7F3E7' },
-  { name: '문화시설',     icon: '🏛️', bg: '#F0EAF7' },
-  { name: '축제공연행사', icon: '🎆', bg: '#FBEAEA' },
-  { name: '여행코스',     icon: '🧳', bg: '#EAF0F7' },
-  { name: '레포츠',       icon: '⚡', bg: '#EEEAF9' },
-  { name: '숙박',         icon: '🏠', bg: '#E7F4F1' },
-  { name: '쇼핑',         icon: '🛍️', bg: '#FBF3DE' },
-  { name: '음식점',       icon: '🍽️', bg: '#FBEEE0' }
+  { name: '관광지',       icon: '🗺️', bg: '#E7F3E7', key: 'tourist' },
+  { name: '문화시설',     icon: '🏛️', bg: '#F0EAF7', key: 'culture' },
+  { name: '축제공연행사', icon: '🎆', bg: '#FBEAEA', key: 'event' },
+  { name: '여행코스',     icon: '🧳', bg: '#EAF0F7', key: 'course' },
+  { name: '레포츠',       icon: '⚡', bg: '#EEEAF9', key: 'leports' },
+  { name: '숙박',         icon: '🏠', bg: '#E7F4F1', key: 'room' },
+  { name: '쇼핑',         icon: '🛍️', bg: '#FBF3DE', key: 'shopping' },
+  { name: '음식점',       icon: '🍽️', bg: '#FBEEE0', key: 'food' }
 ]
+
+// 카테고리 클릭 시 지도 페이지로 이동 + 해당 카테고리 자동 선택
+function goToMapCategory(key) {
+  router.push({ path: '/map', query: { category: key } })
+}
 
 // 커뮤니티에 실제로 등록된 게시글 중 최신 3개 (백엔드 GET /posts/?page=1&limit=3)
 const recentPosts = ref([])
