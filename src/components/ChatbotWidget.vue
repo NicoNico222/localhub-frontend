@@ -195,54 +195,51 @@ async function askOpenAI(userText) {
     return 'OpenAI API 키가 설정되지 않았습니다. .env의 VITE_OPENAI_API_KEY를 확인해주세요.'
   }
 
-  // 최근 대화 10개까지를 문맥으로 전달 (초기 인사말 제외)
-  const history = messages.value
-    .slice(1)
-    .slice(-10)
-    .map(m => ({
-      role: m.from === 'user' ? 'user' : 'assistant',
-      content: m.text
-    }))
+  const payload = {
+    model: 'gpt-5-mini',
+    input: userText // 사용자 질문만 전달 (system 프롬프트/히스토리 없음)
+  }
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${OPENAI_API_KEY}`
     },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...history,
-        { role: 'user', content: userText }
-      ],
-      max_tokens: 500,
-      temperature: 0.7
-    })
+    body: JSON.stringify(payload)
   })
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => null)
-    console.error('OpenAI API error:', err)
+  const data = await res.json()
+  console.log('OpenAI /responses result:', data)
 
-    if (res.status === 401) return 'API 키가 올바르지 않습니다. 키를 다시 확인해주세요.'
-
-    if (res.status === 429) {
-      const errorType = err?.error?.code || err?.error?.type
-
-      if (errorType === 'insufficient_quota') {
-        return 'OpenAI 계정에 결제 정보/크레딧이 등록되어 있지 않습니다. OpenAI 대시보드(platform.openai.com/settings/organization/billing)에서 결제 정보를 등록해주세요.'
+  // 여러 응답 포맷을 안전하게 추출하는 헬퍼
+  function extractText(d) {
+    if (!d) return ''
+    if (typeof d.output_text === 'string' && d.output_text.trim()) return d.output_text.trim()
+    if (Array.isArray(d.output)) {
+      const parts = []
+      for (const item of d.output) {
+        if (typeof item === 'string' && item.trim()) parts.push(item.trim())
+        else if (item?.content) {
+          const content = item.content
+          if (typeof content === 'string' && content.trim()) parts.push(content.trim())
+          else if (Array.isArray(content)) {
+            for (const c of content) {
+              if (typeof c === 'string' && c.trim()) parts.push(c.trim())
+              else if (c?.text && c.text.trim()) parts.push(c.text.trim())
+            }
+          }
+        }
       }
-
-      return '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.'
+      if (parts.length) return parts.join('\n')
     }
-
-    return '답변을 가져오지 못했습니다. 잠시 후 다시 시도해주세요.'
+    if (d.choices?.[0]?.message?.content) return d.choices[0].message.content
+    if (d.choices?.[0]?.text) return d.choices[0].text
+    return ''
   }
 
-  const data = await res.json()
-  return data.choices?.[0]?.message?.content?.trim() || '답변을 생성하지 못했습니다.'
+  const text = extractText(data).trim()
+  return text || '답변을 생성하지 못했습니다.'
 }
 
 // 대화창 맨 아래로 스크롤
