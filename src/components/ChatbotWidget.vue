@@ -242,7 +242,7 @@ async function askOpenAI(userText) {
   return text || '답변을 생성하지 못했습니다.'
 }
 
-// 대화창 맨 아래로 스크롤
+// 대화창 맨 아래로 스크롤임
 async function scrollToBottom() {
   await nextTick()
   if (chatBody.value) {
