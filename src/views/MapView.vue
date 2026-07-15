@@ -64,6 +64,86 @@
 
     </section>
 
+    <!-- 축제 일정 (축제공연행사 카테고리에서만 표시) -->
+    <section
+      v-if="selectedCategory === 'event' && !dataLoading && sortedEvents.length"
+      class="festival-card"
+    >
+
+      <h2 class="festival-title">📅 축제 일정</h2>
+
+      <p class="festival-desc">
+        일정이 가까운 축제부터 보여드려요. 항목을 누르면 지도에서 위치를 확인할 수 있습니다.
+      </p>
+
+      <ul class="festival-list">
+
+        <li
+          v-for="ev in pagedEvents"
+          :key="ev.contentid"
+          class="festival-item"
+          @click="focusEvent(ev)"
+        >
+
+          <img
+            v-if="ev.firstimage2 || ev.firstimage"
+            class="festival-img"
+            :src="ev.firstimage2 || ev.firstimage"
+            :alt="ev.title"
+          />
+
+          <div v-else class="festival-img festival-noimg">
+            🎪
+          </div>
+
+          <div class="festival-info">
+
+            <span class="festival-status" :class="eventStatus(ev).cls">
+              {{ eventStatus(ev).label }}
+            </span>
+
+            <h3>{{ ev.title }}</h3>
+
+            <p class="festival-date">
+              {{ formatEventPeriod(ev) }}
+            </p>
+
+          </div>
+
+        </li>
+
+      </ul>
+
+      <!-- 페이지네이션 -->
+      <div v-if="totalEventPages > 1" class="festival-pagination">
+
+        <button
+          :disabled="eventPage === 1"
+          @click="eventPage--"
+        >
+          이전
+        </button>
+
+        <button
+          v-for="p in totalEventPages"
+          :key="p"
+          :class="{ active: p === eventPage }"
+          @click="eventPage = p"
+        >
+          {{ p }}
+        </button>
+
+        <button
+          :disabled="eventPage === totalEventPages"
+          @click="eventPage++"
+        >
+          다음
+        </button>
+
+      </div>
+
+    </section>
+
   </div>
 </template>
 
@@ -122,6 +202,15 @@ const dataError = ref('')
 const markerCount = ref(0)
 const searchNotice = ref('') // 네비바 검색 결과가 없을 때 안내 문구
 
+// ---------------------------------
+// 축제 일정 목록 (event 카테고리 전용)
+// ---------------------------------
+
+const EVENT_PAGE_SIZE = 10
+
+const eventItems = ref([]) // event 카테고리 원본 items
+const eventPage = ref(1)   // 현재 페이지 (1부터 시작)
+
 const currentCategoryLabel = computed(
   () => categories.find(c => c.key === selectedCategory.value)?.label ?? ''
 )
@@ -169,6 +258,10 @@ async function loadCategoryMarkers(categoryKey) {
     // 백엔드 GET /data/{category}
     const { data } = await http.get(`/data/${categoryKey}`)
     const items = data.items ?? []
+
+    // 축제공연행사 카테고리면 일정 목록도 갱신
+    eventItems.value = categoryKey === 'event' ? items : []
+    eventPage.value = 1
 
     clearMarkers()
 
@@ -285,6 +378,111 @@ watch(
     if (query.q) searchAndFocus(query.q)
   }
 )
+
+// ---------------------------------
+// 축제 일정: 정렬 / 표시 / 클릭 이동
+// ---------------------------------
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// 'YYYYMMDD' -> Date (자정 기준). 형식이 아니면 null
+function parseYmd(ymd) {
+  if (!ymd || String(ymd).length !== 8) return null
+  const s = String(ymd)
+  const d = new Date(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8))
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+// 'YYYYMMDD' -> 'YYYY.MM.DD'
+function formatYmd(ymd) {
+  if (!ymd || String(ymd).length !== 8) return ''
+  const s = String(ymd)
+  return `${s.slice(0, 4)}.${s.slice(4, 6)}.${s.slice(6, 8)}`
+}
+
+function formatEventPeriod(ev) {
+  const start = formatYmd(ev.eventstartdate)
+  const end = formatYmd(ev.eventenddate)
+
+  if (!start && !end) return '일정 미정'
+  if (start && end) return start === end ? start : `${start} ~ ${end}`
+  return start || end
+}
+
+// 오늘 자정 기준 Date
+function today0() {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
+// 정렬 키: 작을수록 위에 표시
+// - 진행중: 0
+// - 예정: 시작까지 남은 일수
+// - 종료: 큰 오프셋 + 종료 후 지난 일수 (최근 종료가 먼저)
+// - 일정 미정: 맨 뒤
+function eventSortKey(ev) {
+  const start = parseYmd(ev.eventstartdate)
+  const end = parseYmd(ev.eventenddate) || start
+
+  if (!start) return Number.MAX_SAFE_INTEGER
+
+  const today = today0()
+
+  if (end && end < today) {
+    return 1e9 + (today - end) / DAY_MS
+  }
+
+  if (start <= today) return 0 // 진행중
+
+  return (start - today) / DAY_MS // 시작까지 D-일수
+}
+
+// 카드에 붙는 상태 배지
+function eventStatus(ev) {
+  const start = parseYmd(ev.eventstartdate)
+  const end = parseYmd(ev.eventenddate) || start
+
+  if (!start) return { label: '일정 미정', cls: 'status-none' }
+
+  const today = today0()
+
+  if (end && end < today) return { label: '종료', cls: 'status-done' }
+
+  if (start <= today) return { label: '진행중', cls: 'status-ing' }
+
+  const dday = Math.round((start - today) / DAY_MS)
+  return { label: `D-${dday}`, cls: 'status-soon' }
+}
+
+// 일정 가까운 순 정렬
+const sortedEvents = computed(() =>
+  [...eventItems.value].sort((a, b) => eventSortKey(a) - eventSortKey(b))
+)
+
+const totalEventPages = computed(() =>
+  Math.ceil(sortedEvents.value.length / EVENT_PAGE_SIZE)
+)
+
+// 현재 페이지의 10개
+const pagedEvents = computed(() => {
+  const startIdx = (eventPage.value - 1) * EVENT_PAGE_SIZE
+  return sortedEvents.value.slice(startIdx, startIdx + EVENT_PAGE_SIZE)
+})
+
+// 축제 카드 클릭 -> 지도 이동 + 마커 클릭(정보창)
+function focusEvent(ev) {
+  if (!map) return
+
+  const entry = markers.find(({ item }) => item.contentid === ev.contentid)
+  if (!entry) return
+
+  map.setLevel(4)
+  map.panTo(entry.marker.getPosition())
+  kakaoRef.maps.event.trigger(entry.marker, 'click')
+
+  // 목록이 지도 아래에 있으므로 지도가 보이도록 스크롤
+  mapContainer.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
 
 // ---------------------------------
 // 초기화
@@ -537,6 +735,246 @@ onMounted(async () => {
 }
 
 /* ---------- */
+/* 축제 일정 */
+/* ---------- */
+
+.festival-card{
+
+    background:#FFFDFA;
+
+    border:1px solid #EDE3D6;
+
+    border-radius:20px;
+
+    padding:25px;
+
+    box-shadow:0 6px 20px rgba(120, 90, 60, .06);
+
+}
+
+.festival-title{
+
+    color:#A47551;
+
+    font-size:24px;
+
+    margin-bottom:8px;
+
+}
+
+.festival-desc{
+
+    color:#8A7A68;
+
+    font-size:14px;
+
+    margin-bottom:20px;
+
+}
+
+.festival-list{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:12px;
+
+}
+
+.festival-item{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:16px;
+
+    padding:12px;
+
+    border:1px solid #EDE3D6;
+
+    border-radius:14px;
+
+    background:#FFFDFA;
+
+    cursor:pointer;
+
+    transition:.25s;
+
+}
+
+.festival-item:hover{
+
+    background:#FAF4EB;
+
+    transform:translateY(-2px);
+
+    box-shadow:0 6px 16px rgba(120, 90, 60, .1);
+
+}
+
+.festival-img{
+
+    width:96px;
+
+    height:72px;
+
+    object-fit:cover;
+
+    border-radius:10px;
+
+    flex-shrink:0;
+
+}
+
+.festival-noimg{
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-size:30px;
+
+    background:#F3E9DC;
+
+}
+
+.festival-info{
+
+    min-width:0;
+
+}
+
+.festival-info h3{
+
+    font-size:16px;
+
+    color:#4A3826;
+
+    margin:6px 0 4px;
+
+    overflow:hidden;
+
+    text-overflow:ellipsis;
+
+    white-space:nowrap;
+
+}
+
+.festival-date{
+
+    font-size:13px;
+
+    color:#8A7A68;
+
+}
+
+.festival-status{
+
+    display:inline-block;
+
+    padding:3px 10px;
+
+    border-radius:999px;
+
+    font-size:11.5px;
+
+    font-weight:700;
+
+}
+
+.status-ing{
+
+    background:#A47551;
+
+    color:white;
+
+}
+
+.status-soon{
+
+    background:#F3E9DC;
+
+    color:#8A5A33;
+
+}
+
+.status-done{
+
+    background:#EEE9E2;
+
+    color:#A79B8C;
+
+}
+
+.status-none{
+
+    background:#FAF4EB;
+
+    color:#B4A48F;
+
+}
+
+.festival-pagination{
+
+    display:flex;
+
+    justify-content:center;
+
+    flex-wrap:wrap;
+
+    gap:8px;
+
+    margin-top:20px;
+
+}
+
+.festival-pagination button{
+
+    min-width:36px;
+
+    padding:8px 12px;
+
+    border-radius:10px;
+
+    background:#F3E9DC;
+
+    color:#8A5A33;
+
+    font-size:13px;
+
+    font-weight:600;
+
+}
+
+.festival-pagination button:hover:not(:disabled){
+
+    background:#EBDCC7;
+
+}
+
+.festival-pagination button.active{
+
+    background:#A47551;
+
+    color:white;
+
+}
+
+.festival-pagination button:disabled{
+
+    opacity:.4;
+
+    cursor:default;
+
+    transform:none;
+
+}
+
+/* ---------- */
 
 @media(max-width:900px){
 
@@ -550,6 +988,14 @@ grid-template-columns:repeat(2,1fr);
 .map-area{
 
 height:350px;
+
+}
+
+.festival-img{
+
+width:76px;
+
+height:60px;
 
 }
 
