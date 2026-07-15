@@ -72,7 +72,15 @@
         최근 게시글
       </div>
 
-      <div class="post-table">
+      <div v-if="recentLoading" class="post-loading">
+        불러오는 중...
+      </div>
+
+      <div v-else-if="recentError" class="post-loading">
+        {{ recentError }}
+      </div>
+
+      <div v-else class="post-table">
 
         <div class="table-header">
 
@@ -123,8 +131,8 @@
 
 <script setup>
 
-import { computed } from 'vue'
-import { getRecentPosts } from '../stores/posts'
+import { ref, onMounted } from 'vue'
+import { fetchPosts } from '../stores/posts'
 
 // 카테고리: 이름 + 아이콘 + 아이콘 배경색
 const categories = [
@@ -138,9 +146,22 @@ const categories = [
   { name: '음식점',       icon: '🍽️', bg: '#FBEEE0' }
 ]
 
-// 커뮤니티에 실제로 등록된 게시글 중 최신 3개
-// TODO: FastAPI 연동 후에도 그대로 사용 가능 (store 내부만 API 호출로 교체)
-const recentPosts = computed(() => getRecentPosts(3))
+// 커뮤니티에 실제로 등록된 게시글 중 최신 3개 (백엔드 GET /posts/?page=1&limit=3)
+const recentPosts = ref([])
+const recentLoading = ref(true)
+const recentError = ref('')
+
+onMounted(async () => {
+  try {
+    const result = await fetchPosts(1, 3)
+    recentPosts.value = result.posts
+  } catch (e) {
+    recentError.value = '최근 게시글을 불러오지 못했습니다.'
+    console.error(e)
+  } finally {
+    recentLoading.value = false
+  }
+})
 
 </script>
 
@@ -329,6 +350,17 @@ const recentPosts = computed(() => getRecentPosts(3))
 }
 
 /* Posts */
+
+.post-loading{
+
+  padding:40px 20px;
+
+  text-align:center;
+
+  color:#8A7A68;
+
+  font-size:14px;
+}
 
 .post-table{
 

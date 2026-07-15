@@ -22,7 +22,7 @@
       <input
         v-model="searchQuery"
         type="text"
-        placeholder="제목, 내용, 작성자로 검색..."
+        placeholder="제목, 작성자로 검색..."
         @keyup.enter="applySearch"
       />
 
@@ -43,6 +43,8 @@
       <button
         v-for="category in categories"
         :key="category"
+        :class="{ active: category === selectedCategory }"
+        @click="selectCategory(category)"
       >
         {{ category }}
       </button>
@@ -63,48 +65,50 @@
 
       </div>
 
-      <div
-        class="table-row"
-        v-for="post in paginatedPosts"
-        :key="post.id"
-        @click="openDetailModal(post)"
-      >
-
-        <div class="category">
-
-          {{ post.category }}
-
-        </div>
-
-        <div class="title">
-
-          {{ post.title }}
-
-        </div>
-
-        <div>
-
-          {{ post.author }}
-
-        </div>
-
-        <div>
-
-          {{ post.views }}
-
-        </div>
-
-        <div>
-
-          {{ post.date }}
-
-        </div>
-
+      <div v-if="loading" class="empty-row">
+        불러오는 중...
       </div>
 
-      <div v-if="filteredPosts.length === 0" class="empty-row">
-        {{ activeSearch ? `"${activeSearch}"에 대한 검색 결과가 없습니다.` : '등록된 게시글이 없습니다.' }}
+      <div v-else-if="loadError" class="empty-row">
+        {{ loadError }}
       </div>
+
+      <template v-else>
+
+        <div
+          class="table-row"
+          v-for="post in paginatedPosts"
+          :key="post.id"
+          @click="openDetailModal(post)"
+        >
+
+          <div class="category">
+            {{ post.category }}
+          </div>
+
+          <div class="title">
+            {{ post.title }}
+          </div>
+
+          <div>
+            {{ post.author }}
+          </div>
+
+          <div>
+            {{ post.views }}
+          </div>
+
+          <div>
+            {{ post.date }}
+          </div>
+
+        </div>
+
+        <div v-if="paginatedPosts.length === 0" class="empty-row">
+          {{ isFiltering ? '검색/카테고리 조건에 맞는 게시글이 없습니다.' : '등록된 게시글이 없습니다.' }}
+        </div>
+
+      </template>
 
     </section>
 
@@ -212,7 +216,9 @@
 
         <div class="modal-footer">
           <button class="btn-ghost" @click="closeWriteModal">취소</button>
-          <button class="btn-solid" @click="submitWrite">등록</button>
+          <button class="btn-solid" :disabled="writeSubmitting" @click="submitWrite">
+            {{ writeSubmitting ? '등록 중...' : '등록' }}
+          </button>
         </div>
 
       </div>
@@ -223,7 +229,7 @@
     <!-- 게시글 상세 / 수정 모달 -->
     <!-- ===================== -->
 
-    <div v-if="showDetailModal && selectedPost" class="modal-overlay" @click.self="closeDetailModal">
+    <div v-if="showDetailModal" class="modal-overlay" @click.self="closeDetailModal">
 
       <div class="modal-card">
 
@@ -234,103 +240,114 @@
 
         <div class="modal-body">
 
-          <!-- ---------- 조회 모드 ---------- -->
-          <template v-if="!editMode">
+          <p v-if="detailLoading">불러오는 중...</p>
 
-            <div class="detail-meta">
-              <span class="category-tag">{{ selectedPost.category }}</span>
-              <span class="detail-date">{{ selectedPost.date }}</span>
-            </div>
+          <p v-else-if="detailError" class="form-error">{{ detailError }}</p>
 
-            <h3 class="detail-title">{{ selectedPost.title }}</h3>
+          <template v-else-if="selectedPost">
 
-            <div class="detail-sub">
-              <span>작성자 {{ selectedPost.author }}</span>
-              <span>조회수 {{ selectedPost.views }}</span>
-            </div>
+            <!-- ---------- 조회 모드 ---------- -->
+            <template v-if="!editMode">
 
-            <p class="detail-content">{{ selectedPost.content }}</p>
+              <div class="detail-meta">
+                <span class="category-tag">{{ selectedPost.category }}</span>
+                <span class="detail-date">{{ selectedPost.date }}</span>
+              </div>
 
-            <!-- 비밀번호 확인 (수정/삭제 전) -->
-            <div v-if="passwordStage" class="password-check">
+              <h3 class="detail-title">{{ selectedPost.title }}</h3>
 
-              <label class="field-label">
-                비밀번호 확인 ({{ passwordStage === 'edit' ? '수정' : '삭제' }})
-              </label>
+              <div class="detail-sub">
+                <span>작성자 {{ selectedPost.author }}</span>
+                <span>조회수 {{ selectedPost.views }}</span>
+              </div>
 
+              <p class="detail-content">{{ selectedPost.content }}</p>
+
+              <!-- 삭제 전 비밀번호 확인 -->
+              <div v-if="passwordStage === 'delete'" class="password-check">
+
+                <label class="field-label">삭제하려면 비밀번호를 입력하세요</label>
+
+                <input
+                  v-model="passwordInput"
+                  type="password"
+                  class="modal-input"
+                  placeholder="작성 시 입력한 비밀번호"
+                  @keyup.enter="confirmDelete"
+                />
+
+                <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
+
+                <div class="password-check-actions">
+                  <button class="btn-ghost" @click="cancelDeleteCheck">취소</button>
+                  <button class="btn-solid" :disabled="deleteSubmitting" @click="confirmDelete">
+                    {{ deleteSubmitting ? '삭제 중...' : '삭제 확인' }}
+                  </button>
+                </div>
+
+              </div>
+
+            </template>
+
+            <!-- ---------- 수정 모드 ---------- -->
+            <template v-else>
+
+              <label class="field-label">카테고리</label>
+              <div class="category-select-grid">
+
+                <button
+                  v-for="category in writableCategories"
+                  :key="category"
+                  class="category-chip"
+                  :class="{ active: editForm.category === category }"
+                  @click="editForm.category = category"
+                >
+                  {{ category }}
+                </button>
+
+              </div>
+
+              <label class="field-label">제목</label>
               <input
-                v-model="passwordInput"
+                v-model="editForm.title"
+                type="text"
+                class="modal-input"
+              />
+
+              <label class="field-label">내용</label>
+              <textarea
+                v-model="editForm.content"
+                class="modal-textarea"
+              ></textarea>
+
+              <label class="field-label">비밀번호</label>
+              <input
+                v-model="editForm.password"
                 type="password"
                 class="modal-input"
                 placeholder="작성 시 입력한 비밀번호"
-                @keyup.enter="confirmPassword"
               />
 
-              <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
+              <p v-if="writeError" class="form-error">{{ writeError }}</p>
 
-              <div class="password-check-actions">
-                <button class="btn-ghost" @click="cancelPasswordCheck">취소</button>
-                <button class="btn-solid" @click="confirmPassword">확인</button>
-              </div>
-
-            </div>
-
-          </template>
-
-          <!-- ---------- 수정 모드 ---------- -->
-          <template v-else>
-
-            <label class="field-label">카테고리</label>
-            <div class="category-select-grid">
-
-              <button
-                v-for="category in writableCategories"
-                :key="category"
-                class="category-chip"
-                :class="{ active: editForm.category === category }"
-                @click="editForm.category = category"
-              >
-                {{ category }}
-              </button>
-
-            </div>
-
-            <label class="field-label">제목</label>
-            <input
-              v-model="editForm.title"
-              type="text"
-              class="modal-input"
-            />
-
-            <label class="field-label">내용</label>
-            <textarea
-              v-model="editForm.content"
-              class="modal-textarea"
-            ></textarea>
-
-            <label class="field-label">작성자</label>
-            <input
-              v-model="editForm.author"
-              type="text"
-              class="modal-input"
-            />
-
-            <p v-if="writeError" class="form-error">{{ writeError }}</p>
+            </template>
 
           </template>
 
         </div>
 
-        <div class="modal-footer">
+        <div class="modal-footer" v-if="!detailLoading && !detailError && selectedPost">
 
           <template v-if="!editMode">
-            <button class="btn-ghost danger" @click="startPasswordCheck('delete')">삭제</button>
-            <button class="btn-solid" @click="startPasswordCheck('edit')">수정</button>
+            <button class="btn-ghost danger" @click="startDeleteCheck">삭제</button>
+            <button class="btn-solid" @click="startEdit">수정</button>
           </template>
 
           <template v-else>
             <button class="btn-ghost" @click="cancelEdit">취소</button>
-            <button class="btn-solid" @click="submitEdit">저장</button>
+            <button class="btn-solid" :disabled="editSubmitting" @click="submitEdit">
+              {{ editSubmitting ? '저장 중...' : '저장' }}
+            </button>
           </template>
 
         </div>
@@ -344,68 +361,127 @@
 
 <script setup>
 
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import {
-  posts,
   categories,
   writableCategories,
-  addPost,
+  fetchPosts,
+  fetchPostDetail,
+  createPost,
   updatePost,
-  removePost,
-  incrementViews,
-  verifyPassword
+  deletePost
 } from '../stores/posts'
 
+const PAGE_SIZE = 10
+
 // ---------------------------------
-// 검색
+// 목록 / 페이지네이션
 // ---------------------------------
+// 백엔드는 검색·카테고리 필터 API를 제공하지 않습니다.
+// 그래서 검색어나 카테고리가 선택되지 않은 "기본 모드"에서는
+// 서버 페이지네이션(page/limit)을 그대로 쓰고,
+// 검색/카테고리 필터가 걸린 "필터 모드"에서는 최대 100개를 받아와
+// 프론트에서 직접 걸러서 다시 10개씩 나눠 보여줍니다.
+
+const posts = ref([])
+const loading = ref(false)
+const loadError = ref('')
+
+const currentPage = ref(1)
+const serverTotalPages = ref(1)
 
 const searchQuery = ref('')
 const activeSearch = ref('')
+const selectedCategory = ref('전체')
+
+const isFiltering = computed(() =>
+  !!activeSearch.value || selectedCategory.value !== '전체'
+)
 
 const filteredPosts = computed(() => {
+  if (!isFiltering.value) return posts.value
+
   const q = activeSearch.value.trim().toLowerCase()
 
-  if (!q) return posts
+  return posts.value.filter(post => {
+    const matchCategory =
+      selectedCategory.value === '전체' || post.category === selectedCategory.value
 
-  return posts.filter(post =>
-    post.title.toLowerCase().includes(q) ||
-    post.content.toLowerCase().includes(q) ||
-    post.author.toLowerCase().includes(q)
-  )
+    const matchSearch =
+      !q ||
+      post.title.toLowerCase().includes(q) ||
+      post.author.toLowerCase().includes(q)
+
+    return matchCategory && matchSearch
+  })
 })
+
+const totalPages = computed(() =>
+  isFiltering.value
+    ? Math.max(1, Math.ceil(filteredPosts.value.length / PAGE_SIZE))
+    : serverTotalPages.value
+)
+
+const paginatedPosts = computed(() => {
+  if (!isFiltering.value) return posts.value // 서버에서 이미 10개만 내려옴
+
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return filteredPosts.value.slice(start, start + PAGE_SIZE)
+})
+
+async function loadPage(page) {
+  loading.value = true
+  loadError.value = ''
+
+  try {
+    if (isFiltering.value) {
+      const result = await fetchPosts(1, 100)
+      posts.value = result.posts
+    } else {
+      const result = await fetchPosts(page, PAGE_SIZE)
+      posts.value = result.posts
+      serverTotalPages.value = result.totalPages
+    }
+
+    currentPage.value = page
+  } catch (e) {
+    loadError.value = '게시글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
+}
+
+function goToPage(page) {
+  if (page < 1 || page > totalPages.value) return
+
+  if (isFiltering.value) {
+    // 이미 받아온 배치를 다시 자르기만 하면 되므로 재요청 불필요
+    currentPage.value = page
+  } else {
+    loadPage(page)
+  }
+}
 
 function applySearch() {
   activeSearch.value = searchQuery.value
-  currentPage.value = 1
+  loadPage(1)
 }
 
 function clearSearch() {
   searchQuery.value = ''
   activeSearch.value = ''
-  currentPage.value = 1
+  loadPage(1)
 }
 
-// ---------------------------------
-// 페이지네이션 (10개씩)
-// ---------------------------------
+function selectCategory(category) {
+  selectedCategory.value = selectedCategory.value === category ? '전체' : category
+  loadPage(1)
+}
 
-const postsPerPage = 10
-const currentPage = ref(1)
-
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(filteredPosts.value.length / postsPerPage))
-)
-
-const paginatedPosts = computed(() => {
-  const start = (currentPage.value - 1) * postsPerPage
-  return filteredPosts.value.slice(start, start + postsPerPage)
+onMounted(() => {
+  loadPage(1)
 })
-
-function goToPage(page) {
-  if (page < 1 || page > totalPages.value) return
-  currentPage.value = page
-}
 
 // ---------------------------------
 // 글쓰기 모달
@@ -413,6 +489,7 @@ function goToPage(page) {
 
 const showWriteModal = ref(false)
 const writeError = ref('')
+const writeSubmitting = ref(false)
 
 const writeForm = reactive({
   category: '',
@@ -436,30 +513,46 @@ function closeWriteModal() {
   showWriteModal.value = false
 }
 
-function submitWrite() {
+async function submitWrite() {
 
   if (!writeForm.category) {
     writeError.value = '카테고리를 선택해주세요.'
     return
   }
 
-  if (!writeForm.title.trim() || !writeForm.content.trim() || !writeForm.author.trim() || !writeForm.password.trim()) {
+  if (
+    !writeForm.title.trim() ||
+    !writeForm.content.trim() ||
+    !writeForm.author.trim() ||
+    !writeForm.password.trim()
+  ) {
     writeError.value = '모든 항목을 입력해주세요.'
     return
   }
 
-  addPost({
-    category: writeForm.category,
-    title: writeForm.title.trim(),
-    content: writeForm.content.trim(),
-    author: writeForm.author.trim(),
-    password: writeForm.password
-  })
+  writeSubmitting.value = true
+  writeError.value = ''
 
-  searchQuery.value = ''
-  activeSearch.value = ''
-  currentPage.value = 1
-  closeWriteModal()
+  try {
+    await createPost({
+      category: writeForm.category,
+      title: writeForm.title.trim(),
+      content: writeForm.content.trim(),
+      author: writeForm.author.trim(),
+      password: writeForm.password
+    })
+
+    searchQuery.value = ''
+    activeSearch.value = ''
+    selectedCategory.value = '전체'
+    closeWriteModal()
+    await loadPage(1)
+  } catch (e) {
+    writeError.value = '등록에 실패했습니다. 잠시 후 다시 시도해주세요.'
+    console.error(e)
+  } finally {
+    writeSubmitting.value = false
+  }
 }
 
 // ---------------------------------
@@ -468,27 +561,43 @@ function submitWrite() {
 
 const showDetailModal = ref(false)
 const selectedPost = ref(null)
+const detailLoading = ref(false)
+const detailError = ref('')
 
 const editMode = ref(false)
 const editForm = reactive({
   category: '',
   title: '',
   content: '',
-  author: ''
+  password: ''
 })
+const editSubmitting = ref(false)
 
-const passwordStage = ref(null) // null | 'edit' | 'delete'
+const passwordStage = ref(null) // null | 'delete'
 const passwordInput = ref('')
 const passwordError = ref('')
+const deleteSubmitting = ref(false)
 
-function openDetailModal(post) {
-  selectedPost.value = post
-  incrementViews(post.id)
+async function openDetailModal(post) {
+  showDetailModal.value = true
+  selectedPost.value = null
+  detailError.value = ''
   editMode.value = false
   passwordStage.value = null
   passwordInput.value = ''
   passwordError.value = ''
-  showDetailModal.value = true
+  writeError.value = ''
+  detailLoading.value = true
+
+  try {
+    // 상세 조회 시 서버에서 조회수가 자동으로 1 증가합니다.
+    selectedPost.value = await fetchPostDetail(post.id)
+  } catch (e) {
+    detailError.value = '게시글을 불러오지 못했습니다.'
+    console.error(e)
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 function closeDetailModal() {
@@ -496,70 +605,98 @@ function closeDetailModal() {
   selectedPost.value = null
   editMode.value = false
   passwordStage.value = null
+
+  // 조회수가 바뀌었을 수 있으니 목록을 새로고침
+  loadPage(currentPage.value)
 }
 
-function startPasswordCheck(stage) {
-  passwordStage.value = stage
+function startEdit() {
+  editForm.category = selectedPost.value.category
+  editForm.title = selectedPost.value.title
+  editForm.content = selectedPost.value.content
+  editForm.password = ''
+  writeError.value = ''
+  editMode.value = true
+}
+
+function cancelEdit() {
+  editMode.value = false
+  writeError.value = ''
+}
+
+async function submitEdit() {
+
+  if (
+    !editForm.category ||
+    !editForm.title.trim() ||
+    !editForm.content.trim() ||
+    !editForm.password.trim()
+  ) {
+    writeError.value = '모든 항목(비밀번호 포함)을 입력해주세요.'
+    return
+  }
+
+  editSubmitting.value = true
+  writeError.value = ''
+
+  try {
+    await updatePost(selectedPost.value.id, {
+      category: editForm.category,
+      title: editForm.title.trim(),
+      content: editForm.content.trim(),
+      password: editForm.password
+    })
+
+    editMode.value = false
+    selectedPost.value = await fetchPostDetail(selectedPost.value.id)
+  } catch (e) {
+    if (e.response?.status === 403) {
+      writeError.value = '비밀번호가 일치하지 않습니다.'
+    } else {
+      writeError.value = '수정에 실패했습니다. 잠시 후 다시 시도해주세요.'
+    }
+    console.error(e)
+  } finally {
+    editSubmitting.value = false
+  }
+}
+
+function startDeleteCheck() {
+  passwordStage.value = 'delete'
   passwordInput.value = ''
   passwordError.value = ''
 }
 
-function cancelPasswordCheck() {
+function cancelDeleteCheck() {
   passwordStage.value = null
   passwordInput.value = ''
   passwordError.value = ''
 }
 
-function confirmPassword() {
+async function confirmDelete() {
 
-  if (!verifyPassword(selectedPost.value.id, passwordInput.value)) {
-    passwordError.value = '비밀번호가 일치하지 않습니다.'
+  if (!passwordInput.value.trim()) {
+    passwordError.value = '비밀번호를 입력해주세요.'
     return
   }
 
-  if (passwordStage.value === 'edit') {
-    editForm.category = selectedPost.value.category
-    editForm.title = selectedPost.value.title
-    editForm.content = selectedPost.value.content
-    editForm.author = selectedPost.value.author
-    editMode.value = true
-    passwordStage.value = null
-  } else if (passwordStage.value === 'delete') {
-    handleDelete()
+  deleteSubmitting.value = true
+  passwordError.value = ''
+
+  try {
+    await deletePost(selectedPost.value.id, passwordInput.value)
+    closeDetailModal()
+    await loadPage(1)
+  } catch (e) {
+    if (e.response?.status === 403) {
+      passwordError.value = '비밀번호가 일치하지 않습니다.'
+    } else {
+      passwordError.value = '삭제에 실패했습니다. 잠시 후 다시 시도해주세요.'
+    }
+    console.error(e)
+  } finally {
+    deleteSubmitting.value = false
   }
-}
-
-function cancelEdit() {
-  editMode.value = false
-}
-
-function submitEdit() {
-
-  if (!editForm.category || !editForm.title.trim() || !editForm.content.trim() || !editForm.author.trim()) {
-    writeError.value = '모든 항목을 입력해주세요.'
-    return
-  }
-
-  updatePost(selectedPost.value.id, {
-    category: editForm.category,
-    title: editForm.title.trim(),
-    content: editForm.content.trim(),
-    author: editForm.author.trim()
-  })
-
-  writeError.value = ''
-  editMode.value = false
-}
-
-function handleDelete() {
-
-  removePost(selectedPost.value.id)
-
-  if (currentPage.value > totalPages.value) {
-    currentPage.value = totalPages.value
-  }
-
-  closeDetailModal()
 }
 
 </script>
@@ -775,6 +912,14 @@ transition:.25s;
 .category-card button:hover{
 
 background:#EBDCC7;
+
+}
+
+.category-card button.active{
+
+background:#A47551;
+
+color:white;
 
 }
 
@@ -1239,6 +1384,15 @@ transition:.2s;
 .btn-solid:hover{
 
 background:#8F6242;
+
+}
+
+.btn-solid:disabled,
+.btn-ghost:disabled{
+
+opacity:.6;
+
+cursor:not-allowed;
 
 }
 
