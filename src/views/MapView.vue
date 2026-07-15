@@ -36,6 +36,8 @@
 
         <span v-else-if="dataError">{{ dataError }}</span>
 
+        <span v-else-if="searchNotice">{{ searchNotice }}</span>
+
         <span v-else>
           {{ currentCategoryLabel }} {{ markerCount }}곳이 지도에 표시되어 있습니다. 마커를 눌러 상세 정보를 확인하세요.
         </span>
@@ -66,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { loadKakaoMap } from '../api/kakaoMap'
 import http from '../api/http'
@@ -100,7 +102,7 @@ const FALLBACK_CENTER = { lat: 36.1042, lng: 128.4184 }
 
 let kakaoRef = null
 let map = null
-let markers = []       // 현재 지도에 올라간 마커들
+let markers = []       // 현재 지도에 올라간 마커들: { marker, item } 쌍으로 저장
 let infoWindow = null  // 마커 클릭 시 여는 정보창 (하나를 재사용)
 
 // ---------------------------------
@@ -118,6 +120,7 @@ const selectedCategory = ref(initialCategory)
 const dataLoading = ref(false)
 const dataError = ref('')
 const markerCount = ref(0)
+const searchNotice = ref('') // 네비바 검색 결과가 없을 때 안내 문구
 
 const currentCategoryLabel = computed(
   () => categories.find(c => c.key === selectedCategory.value)?.label ?? ''
@@ -150,7 +153,7 @@ function buildInfoContent(item) {
 
 // 기존 마커 전부 제거
 function clearMarkers() {
-  markers.forEach(m => m.setMap(null))
+  markers.forEach(({ marker }) => marker.setMap(null))
   markers = []
   if (infoWindow) infoWindow.close()
 }
@@ -190,7 +193,9 @@ async function loadCategoryMarkers(categoryKey) {
         infoWindow.open(map, marker)
       })
 
-      markers.push(marker)
+      // 검색 기능에서 장소 이름으로 마커를 찾을 수 있도록
+      // 마커와 원본 데이터를 함께 저장
+      markers.push({ marker, item })
     }
 
     markerCount.value = markers.length
@@ -205,8 +210,81 @@ async function loadCategoryMarkers(categoryKey) {
 function selectCategory(key) {
   if (key === selectedCategory.value) return
   selectedCategory.value = key
+  searchNotice.value = ''
   loadCategoryMarkers(key)
 }
+
+// ---------------------------------
+// 네비바 검색 -> 마커로 이동
+// ---------------------------------
+
+// 현재 마커들 중 장소 이름에 검색어가 포함된 것 찾기
+function findMarkerEntry(keyword) {
+  return markers.find(({ item }) =>
+    String(item.title ?? '').toLowerCase().includes(keyword)
+  )
+}
+
+// 검색어에 해당하는 장소로 지도 이동 + 마커 클릭(정보창 열기)
+async function searchAndFocus(rawKeyword) {
+  if (!map) return
+
+  const keyword = String(rawKeyword ?? '').trim().toLowerCase()
+  if (!keyword) return
+
+  searchNotice.value = ''
+
+  // 1) 현재 카테고리 마커에서 먼저 찾기
+  let entry = findMarkerEntry(keyword)
+
+  // 2) 없으면 다른 카테고리를 순회하며 찾기
+  //    (찾으면 해당 카테고리로 전환 후 마커 다시 로드)
+  if (!entry) {
+    for (const c of categories) {
+      if (c.key === selectedCategory.value) continue
+
+      try {
+        const { data } = await http.get(`/data/${c.key}`)
+        const items = data.items ?? []
+
+        const hit = items.some(it =>
+          String(it.title ?? '').toLowerCase().includes(keyword)
+        )
+
+        if (hit) {
+          selectedCategory.value = c.key
+          await loadCategoryMarkers(c.key)
+          entry = findMarkerEntry(keyword)
+          break
+        }
+      } catch (e) {
+        // 특정 카테고리 조회 실패 시 다음 카테고리로 넘어감
+        console.error(e)
+      }
+    }
+  }
+
+  if (entry) {
+    // 확대 후 해당 위치로 이동
+    map.setLevel(4)
+    map.panTo(entry.marker.getPosition())
+
+    // 마커 클릭 이벤트를 프로그래밍적으로 발생 -> 정보창 열림
+    kakaoRef.maps.event.trigger(entry.marker, 'click')
+  } else {
+    searchNotice.value = `'${String(rawKeyword).trim()}' 검색 결과가 없습니다. 다른 검색어로 시도해보세요.`
+  }
+}
+
+// 네비바에서 검색하면 /map?q=검색어&t=타임스탬프 로 이동해 옴.
+// 이미 지도 페이지에 있을 때도 반응하도록 route.query를 감시.
+// (t 덕분에 같은 검색어를 다시 검색해도 query 객체가 바뀌어 watch가 동작)
+watch(
+  () => route.query,
+  (query) => {
+    if (query.q) searchAndFocus(query.q)
+  }
+)
 
 // ---------------------------------
 // 초기화
@@ -244,6 +322,12 @@ onMounted(async () => {
 
     // 3) 초기 카테고리(관광지) 마커 로드
     await loadCategoryMarkers(selectedCategory.value)
+
+    // 4) 다른 페이지에서 /map?q=검색어 로 진입한 경우
+    //    (마운트 시점에는 watch가 안 잡히므로 여기서 직접 실행)
+    if (route.query.q) {
+      await searchAndFocus(route.query.q)
+    }
   } catch (e) {
     mapError.value = e.message
     console.error(e)

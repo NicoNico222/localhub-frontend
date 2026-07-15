@@ -17,10 +17,31 @@
     <!-- 가운데 -->
     <div class="search-section">
 
-      <input
-        type="text"
-        placeholder="지역 정보 검색..."
-      />
+      <div class="search-box">
+
+        <!-- 돋보기 아이콘 (왼쪽) -->
+        <svg
+          class="search-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <line x1="21" y1="21" x2="16.2" y2="16.2" />
+        </svg>
+
+        <input
+          v-model="keyword"
+          type="text"
+          placeholder="장소 검색 (예: 금오산)"
+          @keyup.enter="onSearch"
+        />
+
+      </div>
 
     </div>
 
@@ -45,7 +66,25 @@
 </template>
 
 <script setup>
-import { RouterLink } from 'vue-router'
+import { ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const keyword = ref('')
+
+function onSearch() {
+  const q = keyword.value.trim()
+  if (!q) return
+
+  // 지도 페이지로 이동하면서 검색어 전달
+  // t(타임스탬프)는 같은 검색어로 다시 검색해도
+  // MapView의 watch가 반응하도록 하기 위한 값입니다.
+  router.push({
+    name: 'map',
+    query: { q, t: Date.now() }
+  })
+}
 </script>
 
 <style scoped>
@@ -136,13 +175,43 @@ import { RouterLink } from 'vue-router'
 
 }
 
-.search-section input{
+.search-box{
+
+    position:relative;
+
+    display:flex;
+
+    align-items:center;
 
     width:500px;
 
     max-width:100%;
 
-    padding:8px 14px;
+}
+
+.search-icon{
+
+    position:absolute;
+
+    left:14px;
+
+    width:16px;
+
+    height:16px;
+
+    color:#B49B7F;
+
+    pointer-events:none;
+
+}
+
+.search-box input{
+
+    flex:1;
+
+    min-width:0;
+
+    padding:8px 14px 8px 38px;
 
     border:none;
 
@@ -158,7 +227,7 @@ import { RouterLink } from 'vue-router'
 
 }
 
-.search-section input:focus{
+.search-box input:focus{
 
     background:white;
 
@@ -239,7 +308,7 @@ nav{
 
 }
 
-.search-section input{
+.search-box{
 
     width:100%;
 
