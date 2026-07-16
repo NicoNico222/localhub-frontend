@@ -97,23 +97,23 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
+import http from '../api/http'
 
-// ---------------------------------
-// 시스템 프롬프트 (하드코딩)
-// ---------------------------------
+
 
 const SYSTEM_PROMPT = `
 당신은 경북 구미 지역 정보 사이트 "LocalHub"의 안내 챗봇입니다.
 
 [역할]
 - 구미의 관광지, 문화시설, 축제/공연/행사, 여행코스, 레포츠, 숙박, 쇼핑, 음식점 질문에 답합니다.
-- 사이트 사용법(지도에서 장소 찾기, 카테고리 선택, 커뮤니티 글쓰기)을 안내합니다.
+- 커뮤니티 게시글 검색도 도와줍니다.
+- 답변에 필요한 정보가 있으면 반드시 제공된 도구(function)를 호출해서
+  실제 데이터를 확인한 뒤 답하세요. 도구를 쓰지 않고 추측으로 답하지 마세요.
 
 [답변 규칙]
-- 한국어로, 친근하고 간결하게 3~5문장 이내로 답합니다.
-- 영업시간, 요금, 축제 날짜처럼 확실하지 않은 정보는 단정하지 말고
-  "지도 페이지나 공식 홈페이지에서 확인해보세요"라고 안내합니다.
-- 존재하지 않는 장소나 축제를 지어내지 않습니다.
+- 한국어로, 친근하고 간결하게 답합니다.
+- 도구 조회 결과에 없는 장소나 축제는 지어내지 않습니다.
+- 조회 결과가 비어있으면 "관련 정보를 찾지 못했어요"라고 솔직히 답합니다.
 
 [범위 제한]
 - 구미/경북 지역 및 LocalHub와 무관한 질문에는
@@ -121,21 +121,137 @@ const SYSTEM_PROMPT = `
   라고 답하고 그 이상 답변하지 않습니다.
 `.trim()
 
-// 토큰 절약: 오래된 대화는 잘라내고 최근 N개만 전송
 const HISTORY_LIMIT = 10
+const CATEGORY_KEYS = [
+  'tourist', 'leports', 'culture', 'shopping', 'room', 'course', 'food', 'event'
+]
 
-// ---------------------------------
-// 대화 상태
-// ---------------------------------
+
+
+const TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'search_places',
+      description: '구미 지역의 관광지/문화시설/축제/여행코스/레포츠/숙박/쇼핑/음식점 데이터를 카테고리별로 검색합니다.',
+      parameters: {
+        type: 'object',
+        properties: {
+          category: { type: 'string', enum: CATEGORY_KEYS, description: '조회할 데이터 카테고리' },
+          keyword: { type: 'string', description: "장소명 또는 주소에 포함될 검색어 (예: '금오산'). 없으면 전체 반환" }
+        },
+        required: ['category']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_festival_schedule',
+      description: '구미 지역 축제/공연/행사 일정을 조회합니다. 오늘 날짜 기준 진행중/예정 필터가 가능합니다.',
+      parameters: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['ongoing', 'upcoming', 'all'], description: 'ongoing=진행중, upcoming=예정, all=전체(기본값)' },
+          keyword: { type: 'string', description: '행사명/주소에 포함될 검색어' }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_community_posts',
+      description: 'LocalHub 커뮤니티 게시판에서 제목에 특정 키워드가 포함된 게시글을 검색합니다.',
+      parameters: {
+        type: 'object',
+        properties: {
+          keyword: { type: 'string', description: '검색어' }
+        },
+        required: ['keyword']
+      }
+    }
+  }
+]
+
+
+function trimItem(it) {
+  return {
+    title: it.title,
+    addr1: it.addr1,
+    tel: it.tel,
+    mapx: it.mapx,
+    mapy: it.mapy
+  }
+}
+
+function filterByKeyword(items, keyword) {
+  if (!keyword) return items
+  const kw = keyword.trim()
+  return items.filter(it => (it.title || '').includes(kw) || (it.addr1 || '').includes(kw))
+}
+
+async function toolSearchPlaces({ category, keyword }) {
+  const { data } = await http.get(`/data/${category}`)
+  const items = filterByKeyword(data.items || [], keyword)
+  return { count: items.length, items: items.slice(0, 8).map(trimItem) }
+}
+
+async function toolGetFestivalSchedule({ status = 'all', keyword } = {}) {
+  const { data } = await http.get('/data/event')
+  let items = filterByKeyword(data.items || [], keyword)
+
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
+
+  if (status === 'ongoing') {
+    items = items.filter(it => it.eventstartdate && it.eventenddate && it.eventstartdate <= todayStr && todayStr <= it.eventenddate)
+  } else if (status === 'upcoming') {
+    items = items.filter(it => it.eventstartdate && it.eventstartdate > todayStr)
+  }
+
+  const result = items.slice(0, 8).map(it => ({
+    title: it.title,
+    addr1: it.addr1,
+    eventstartdate: it.eventstartdate,
+    eventenddate: it.eventenddate,
+    eventplace: it.eventplace
+  }))
+
+  return { count: items.length, items: result }
+}
+
+async function toolSearchCommunityPosts({ keyword }) {
+  const { data } = await http.get('/posts/', { params: { page: 1, limit: 100 } })
+  const kw = (keyword || '').trim()
+  const matched = data.data.filter(p => (p.title || '').includes(kw))
+
+  const items = matched.slice(0, 8).map(p => ({
+    id: p.id,
+    category: p.category,
+    title: p.title,
+    nickname: p.nickname
+  }))
+
+  return { count: matched.length, items }
+}
+
+const FUNCTION_MAP = {
+  search_places: toolSearchPlaces,
+  get_festival_schedule: toolGetFestivalSchedule,
+  search_community_posts: toolSearchCommunityPosts
+}
+
+
 
 const isOpen = ref(false)
-const messages = ref([]) // { role: 'user' | 'assistant', content: string }
+const messages = ref([]) 
 const input = ref('')
 const loading = ref(false)
 
 const messageArea = ref(null)
 
-// 새 메시지가 생기면 목록 맨 아래로 스크롤
 watch(
   () => [messages.value.length, loading.value],
   async () => {
@@ -146,9 +262,26 @@ watch(
   }
 )
 
-// ---------------------------------
-// OpenAI 호출
-// ---------------------------------
+
+
+async function callOpenAI(conversation) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-5-mini', 
+      messages: conversation,
+      tools: TOOLS
+    })
+  })
+
+  if (!res.ok) throw new Error(`API 오류 (${res.status})`)
+  const data = await res.json()
+  return data.choices?.[0]?.message
+}
 
 async function sendMessage() {
   const text = input.value.trim()
@@ -159,28 +292,46 @@ async function sendMessage() {
   loading.value = true
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-5-mini',
-        messages: [
-          // 시스템 프롬프트는 매 요청 맨 앞에 항상 포함
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...messages.value.slice(-HISTORY_LIMIT)
-        ]
-      })
+    const conversation = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...messages.value.slice(-HISTORY_LIMIT).map(m => ({ role: m.role, content: m.content }))
+    ]
+
+    let finalReply = null
+
+    for (let i = 0; i < 4; i++) {
+      const message = await callOpenAI(conversation)
+      conversation.push(message)
+
+      const toolCalls = message.tool_calls
+      if (!toolCalls) {
+        finalReply = message.content ?? '응답을 받지 못했어요.'
+        break
+      }
+
+      for (const call of toolCalls) {
+        const fn = FUNCTION_MAP[call.function.name]
+        let result
+
+        try {
+          const args = JSON.parse(call.function.arguments || '{}')
+          result = fn ? await fn(args) : { error: '알 수 없는 함수' }
+        } catch (err) {
+          result = { error: String(err) }
+        }
+
+        conversation.push({
+          role: 'tool',
+          tool_call_id: call.id,
+          content: JSON.stringify(result)
+        })
+      }
+    }
+
+    messages.value.push({
+      role: 'assistant',
+      content: finalReply ?? '죄송해요, 답변 생성이 지연되고 있어요. 다시 시도해주세요.'
     })
-
-    if (!res.ok) throw new Error(`API 오류 (${res.status})`)
-
-    const data = await res.json()
-    const reply = data.choices?.[0]?.message?.content ?? '응답을 받지 못했어요.'
-
-    messages.value.push({ role: 'assistant', content: reply })
   } catch (e) {
     console.error(e)
     messages.value.push({
