@@ -1,322 +1,169 @@
-/* ===========================
-   LocalHub Design System
-   (Autumn Brown Theme)
-   =========================== */
-
-/* Google Font */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 
-/* ---------- Color Variables ---------- */
-
 :root {
-
-  /* 메인 브라운 (라떼/카멜 톤) */
   --primary: #A47551;
   --primary-light: #F3E9DC;
   --primary-dark: #8F6242;
-
-  /* 배경: 아주 연한 크림 */
   --background: #FAF6F0;
   --surface: #FFFDFA;
-
   --text: #4A3826;
   --text-light: #8A7A68;
-
   --border: #EDE3D6;
-
-  --shadow:
-      0 6px 20px rgba(120, 90, 60, .06);
-
-  --radius:20px;
-
+  --shadow: 0 6px 20px rgba(120, 90, 60, .06);
+  --radius: 20px;
 }
 
-/* ---------- Reset ---------- */
-
-*{
-
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-html{
-
-    scroll-behavior:smooth;
-
+html {
+  scroll-behavior: smooth;
 }
 
-body{
-
-    background:var(--background);
-
-    color:var(--text);
-
-    font-family:
-    "Pretendard",
-    "Noto Sans KR",
-    sans-serif;
-
-    line-height:1.6;
-
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family: "Pretendard", "Noto Sans KR", sans-serif;
+  line-height: 1.6;
 }
 
-/* ---------- Container ---------- */
-
-.container{
-
-    width:100%;
-
-    max-width:1100px;
-
-    margin:auto;
-
-    padding:30px;
-
+.container {
+  width: 100%;
+  max-width: 1100px;
+  margin: auto;
+  padding: 30px;
 }
 
-/* ---------- Link ---------- */
-
-a{
-
-    color:inherit;
-
-    text-decoration:none;
-
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
-/* ---------- Image ---------- */
-
-img{
-
-    display:block;
-
-    width:100%;
-
+img {
+  display: block;
+  width: 100%;
 }
 
-/* ---------- List ---------- */
-
-ul{
-
-    list-style:none;
-
+ul {
+  list-style: none;
 }
 
-/* ---------- Button ---------- */
-
-button{
-
-    cursor:pointer;
-
-    border:none;
-
-    font-family:inherit;
-
-    transition:.25s;
-
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: .25s;
 }
 
-button:hover{
-
-    transform:translateY(-2px);
-
+button:hover {
+  transform: translateY(-2px);
 }
-
-/* ---------- Input ---------- */
 
 input,
-textarea{
-
-    font-family:inherit;
-
-    outline:none;
-
+textarea {
+  font-family: inherit;
+  outline: none;
 }
 
-/* ---------- Card ---------- */
-
-.card{
-
-    background:var(--surface);
-
-    border:1px solid var(--border);
-
-    border-radius:var(--radius);
-
-    box-shadow:var(--shadow);
-
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
-/* ---------- Section Title ---------- */
-
-.section-title{
-
-    font-size:28px;
-
-    font-weight:700;
-
-    color:var(--text);
-
-    margin-bottom:25px;
-
+.section-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 25px;
 }
 
-/* ---------- Primary Button ---------- */
-
-.btn-primary{
-
-    background:var(--primary);
-
-    color:white;
-
-    padding:14px 28px;
-
-    border-radius:14px;
-
-    font-weight:600;
-
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  padding: 14px 28px;
+  border-radius: 14px;
+  font-weight: 600;
 }
 
-.btn-primary:hover{
-
-    background:var(--primary-dark);
-
+.btn-primary:hover {
+  background: var(--primary-dark);
 }
 
-/* ---------- Secondary Button ---------- */
-
-.btn-secondary{
-
-    background:var(--primary-light);
-
-    color:var(--primary-dark);
-
-    padding:14px 28px;
-
-    border-radius:14px;
-
-    font-weight:600;
-
+.btn-secondary {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  padding: 14px 28px;
+  border-radius: 14px;
+  font-weight: 600;
 }
 
-/* ---------- Badge ---------- */
-
-.badge{
-
-    display:inline-block;
-
-    padding:8px 14px;
-
-    border-radius:999px;
-
-    background:var(--primary-light);
-
-    color:var(--primary-dark);
-
-    font-size:14px;
-
-    font-weight:600;
-
+.badge {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 14px;
+  font-weight: 600;
 }
 
-/* ---------- Table ---------- */
-
-table{
-
-    width:100%;
-
-    border-collapse:collapse;
-
+table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-th{
-
-    background:#FAF4EB;
-
-    padding:16px;
-
+th {
+  background: #FAF4EB;
+  padding: 16px;
 }
 
-td{
-
-    padding:16px;
-
-    border-top:1px solid var(--border);
-
+td {
+  padding: 16px;
+  border-top: 1px solid var(--border);
 }
 
-/* ---------- Animation ---------- */
-
-.fade{
-
-    animation:fade .4s ease;
-
+.fade {
+  animation: fade .4s ease;
 }
 
-@keyframes fade{
-
-from{
-
-opacity:0;
-
-transform:translateY(10px);
-
+@keyframes fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-to{
-
-opacity:1;
-
-transform:none;
-
+::-webkit-scrollbar {
+  width: 10px;
 }
 
+::-webkit-scrollbar-track {
+  background: #F5EDE2;
 }
 
-/* ---------- Scrollbar ---------- */
-
-::-webkit-scrollbar{
-
-    width:10px;
-
+::-webkit-scrollbar-thumb {
+  background: #D9C4A9;
+  border-radius: 10px;
 }
 
-::-webkit-scrollbar-track{
-
-    background:#F5EDE2;
-
+::-webkit-scrollbar-thumb:hover {
+  background: #C7AC8B;
 }
 
-::-webkit-scrollbar-thumb{
-
-    background:#D9C4A9;
-
-    border-radius:10px;
-
-}
-
-::-webkit-scrollbar-thumb:hover{
-
-    background:#C7AC8B;
-
-}
-
-/* ---------- Responsive ---------- */
-
-@media(max-width:900px){
-
-.container{
-
-padding:20px;
-
-}
-
-.section-title{
-
-font-size:24px;
-
-}
-
+@media(max-width: 900px) {
+  .container {
+    padding: 20px;
+  }
+  .section-title {
+    font-size: 24px;
+  }
 }

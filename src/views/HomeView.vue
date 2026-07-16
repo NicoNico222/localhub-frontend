@@ -5,8 +5,8 @@
     <section class="hero-card">
 
       <h1>
-        구미의 모든 지역정보를<br />
-        한 곳에서 <span class="hero-pin">📍</span>
+        구미/경북의 지역정보를<br />
+        한 곳에서 확인하세요 <span class="hero-pin"></span>
       </h1>
 
       <p>

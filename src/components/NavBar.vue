@@ -77,9 +77,6 @@ function onSearch() {
   const q = keyword.value.trim()
   if (!q) return
 
-  // 지도 페이지로 이동하면서 검색어 전달
-  // t(타임스탬프)는 같은 검색어로 다시 검색해도
-  // MapView의 watch가 반응하도록 하기 위한 값입니다.
   router.push({
     name: 'map',
     query: { q, t: Date.now() }
